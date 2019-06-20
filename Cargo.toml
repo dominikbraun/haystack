@@ -1,0 +1,7 @@
+[package]
+name = "haystack"
+version = "0.1.0"
+authors = ["Dominik Braun <braun@sternentstehung.de>"]
+edition = "2018"
+
+[dependencies]
