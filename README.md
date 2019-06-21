@@ -1,2 +1,2 @@
-# haystack
-what's that?
+# Haystack (WIP)
+> Search all files for a given string.
