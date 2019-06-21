@@ -1,5 +1,5 @@
 #[derive(Debug)]
-pub struct App<'a, 'b> {
+pub struct HS<'a, 'b> {
     sc: &'a Scanner,
     mg: &'b Manager,
 }
