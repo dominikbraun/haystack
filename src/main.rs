@@ -1,14 +1,17 @@
 use std::io;
 
-use crate::core::HS;
+use crate::core::Manager;
+use crate::core::Scanner;
 
 mod core;
 
 // These constants will be provided by the CLI later.
 const DIR: &str = "./";
+const TERM: &str = "package";
 
 fn main() -> Result<(), io::Error> {
-    let haystack = HS::new();
+    let haystack = Manager::new(TERM, 5);
+    let scanner = Scanner{}.run(&haystack, DIR);
 
-    haystack.search(DIR, "package")
+    Ok(())
 }
