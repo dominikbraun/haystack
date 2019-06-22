@@ -78,3 +78,27 @@ impl Worker {
         return false;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+    use std::io::ErrorKind;
+
+    use crate::core::{Manager, Worker};
+
+    #[test]
+    fn empty_search_term() {
+        let m = Manager::new("", 5);
+        match m {
+            Ok(_) => panic!("this call should return an error"),
+            Err(err) => assert!(err.kind() == ErrorKind::InvalidInput && err.description() == "empty search term is not allowed", "wrong error returned: {}", err)
+        }
+    }
+
+    #[test]
+    fn empty_buffer() {
+        let w = Worker {};
+        let buf: Vec<u8> = vec![];
+        assert!(!w.process(&buf, "text"), "empty buffer should return false");
+    }
+}
