@@ -59,10 +59,6 @@ struct Worker {}
 
 impl Worker {
     fn process(&self, buf: &Vec<u8>, term: &str) -> bool {
-        if buf.len() == 0 {
-            return false;
-        }
-
         let term = term.as_bytes();
 
         'bytes: for (i, _) in buf.iter().enumerate() {
