@@ -1,17 +1,18 @@
 use std::io;
-
 use crate::core::Manager;
 use crate::core::Scanner;
 
-mod core;
-
-// These constants will be provided by the CLI later.
-const DIR: &str = "./";
-const TERM: &str = "package";
+mod core; 
+mod app;
 
 fn main() -> Result<(), io::Error> {
-    let haystack = Manager::new(TERM, 5);
-    let _ = Scanner{}.run(&haystack, DIR);
+    let matches = app::build().get_matches();
+
+    let dir = matches.value_of("dir").unwrap_or("./");
+    let term = matches.value_of("needle").unwrap();
+
+    let haystack = Manager::new(term, 5);
+    let _ = Scanner{}.run(&haystack, dir);
 
     Ok(())
 }
