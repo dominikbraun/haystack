@@ -20,8 +20,8 @@ impl HS {
         }
     }
 
-    pub fn run(&self, path: &str) -> Result<(), io::Error> {
-        self.sc.run(path)
+    pub fn search(&self, path: &str, term: &str) -> Result<(), io::Error> {
+        self.sc.run(path, term)
     }
 }
 
@@ -29,7 +29,7 @@ impl HS {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(&self, path: &str) -> Result<(), io::Error> {
+    pub fn run(&self, path: &str, term: &str) -> Result<(), io::Error> {
         let mut buf: Vec<u8> = Vec::new();
 
         for item in WalkDir::new(path).into_iter().filter_map(|i| i.ok()) {
@@ -39,12 +39,30 @@ impl Scanner {
                 buf.clear();
                 handle.read_to_end(&mut buf)?;
 
+                let result = self.processFile(&buf, term);
 
-
-                println!("opened {}", item.path().display().to_string());
+                println!("opened {}: {}", item.path().display().to_string(), result);
             }
         }
         Ok(())
+    }
+
+    fn processFile(&self, fileBuf: &Vec<u8>, term: &str) -> bool {
+        let term = term.as_bytes();
+
+        'fileLoop: for (i, byte) in fileBuf.iter().enumerate() {
+            for (j, searchByte) in term.iter().enumerate() {
+                if fileBuf[i + j] != *searchByte {
+                    continue 'fileLoop;
+                }
+                println!("------------------{}", String::from_utf8(vec!(*byte)).unwrap());
+                if j == term.len() - 1 {
+                    return true;
+                }
+            }
+        };
+
+        false
     }
 }
 

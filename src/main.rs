@@ -10,5 +10,5 @@ const DIR: &str = "./";
 fn main() -> Result<(), io::Error> {
     let haystack = HS::new();
 
-    haystack.run(DIR)
+    haystack.search(DIR, "package")
 }
