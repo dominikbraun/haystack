@@ -11,7 +11,7 @@ const TERM: &str = "package";
 
 fn main() -> Result<(), io::Error> {
     let haystack = Manager::new(TERM, 5);
-    let scanner = Scanner{}.run(&haystack, DIR);
+    let _ = Scanner{}.run(&haystack, DIR);
 
     Ok(())
 }

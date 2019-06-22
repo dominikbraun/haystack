@@ -20,9 +20,12 @@ impl Manager {
         }
     }
 
-    fn take_file(&self, buf: &Vec<u8>) {
+    fn take_file(&self, name: &str, buf: &Vec<u8>) {
         let res = self.pool.last().unwrap().process(buf, &self.term);
-        println!("{:?}", res);
+        
+        if res {
+            println!("{}", name);
+        }
     }
 }
 
@@ -40,7 +43,7 @@ impl Scanner {
                 buf.clear();
                 handle.read_to_end(&mut buf)?;
 
-                mg.take_file(&buf);
+                mg.take_file(item.path().to_str().unwrap(), &buf);
             }
         }
         Ok(())
@@ -54,7 +57,7 @@ impl Worker {
     fn process(&self, buf: &Vec<u8>, term: &str) -> bool {
         let term = term.as_bytes();
 
-        'bytes: for (i, b) in buf.iter().enumerate() {
+        'bytes: for (i, _) in buf.iter().enumerate() {
             for (j, term_b) in term.iter().enumerate() {
                 if buf[i + j] != *term_b {
                     continue 'bytes;
