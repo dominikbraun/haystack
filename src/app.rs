@@ -10,9 +10,9 @@ pub fn build() -> App<'static, 'static> {
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
-    Arg::with_name("dir")
-        .short("d")
-        .long("dir")
+    Arg::with_name("haystack")
+        .short("h")
+        .long("haystack")
         .help("The directory to be searched in.")
         .takes_value(true)
         .required(true)
