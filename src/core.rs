@@ -2,7 +2,7 @@ extern crate walkdir;
 
 use std::fs::File;
 use std::io;
-use std::io::Read;
+use std::io::{Error, ErrorKind, Read};
 
 use walkdir::WalkDir;
 
@@ -13,11 +13,15 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(term: &str, pool_size: usize) -> Manager {
-        Manager {
+    pub fn new(term: &str, pool_size: usize) -> Result<Manager, Error> {
+        if term.len() == 0 {
+            return Result::Err(Error::new(ErrorKind::InvalidInput, "empty search term is not allowed"));
+        }
+
+        Result::Ok(Manager {
             term: term.to_owned(),
             pool: vec![Worker{}; pool_size],
-        }
+        })
     }
 
     fn take_file(&self, name: &str, buf: &Vec<u8>) {
@@ -55,9 +59,17 @@ struct Worker {}
 
 impl Worker {
     fn process(&self, buf: &Vec<u8>, term: &str) -> bool {
+        if buf.len() == 0 {
+            return false;
+        }
+
         let term = term.as_bytes();
 
         'bytes: for (i, _) in buf.iter().enumerate() {
+            if buf.len() - i <= term.len() {
+                return false;
+            }
+
             for (j, term_b) in term.iter().enumerate() {
                 if buf[i + j] != *term_b {
                     continue 'bytes;
@@ -67,6 +79,6 @@ impl Worker {
                 }
             }
         }
-        false
+        return false;
     }
 }

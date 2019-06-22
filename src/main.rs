@@ -12,7 +12,7 @@ fn main() -> Result<(), io::Error> {
     let dir = matches.value_of("haystack").unwrap_or("./");
     let term = matches.value_of("needle").unwrap();
 
-    let haystack = Manager::new(term, 5);
+    let haystack = Manager::new(term, 5)?;
     let _ = Scanner{}.run(&haystack, dir);
 
     Ok(())
