@@ -39,7 +39,7 @@ impl Scanner {
                 buf.clear();
                 handle.read_to_end(&mut buf)?;
 
-                let result = self.processFile(&buf, term);
+                let result = self.process_file(&buf, term);
 
                 println!("opened {}: {}", item.path().display().to_string(), result);
             }
@@ -47,20 +47,19 @@ impl Scanner {
         Ok(())
     }
 
-    fn processFile(&self, fileBuf: &Vec<u8>, term: &str) -> bool {
+    fn process_file(&self, buf: &Vec<u8>, term: &str) -> bool {
         let term = term.as_bytes();
 
-        'fileLoop: for (i, byte) in fileBuf.iter().enumerate() {
-            for (j, searchByte) in term.iter().enumerate() {
-                if fileBuf[i + j] != *searchByte {
-                    continue 'fileLoop;
+        'file_loop: for (i, byte) in buf.iter().enumerate() {
+            for (j, term_byte) in term.iter().enumerate() {
+                if buf[i + j] != *term_byte {
+                    continue 'file_loop;
                 }
                 if j == term.len() - 1 {
                     return true;
                 }
             }
         };
-
         false
     }
 }
@@ -72,3 +71,21 @@ struct Manager {
 
 #[derive(Debug, Copy, Clone)]
 struct Worker {}
+
+impl Worker {
+    fn process_file(&self, buf: &Vec<u8>, term: &str) -> bool {
+        let term = term.as_bytes();
+
+        'fb: for (i, b) in buf.iter().enumerate() {
+            for (j, term_b) in term.iter().enumerate() {
+                if buf[i + j] != *term_b {
+                    continue 'fb;
+                }
+                if j == term.len() - 1 {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+}
