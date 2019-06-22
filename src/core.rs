@@ -1,7 +1,18 @@
 #[derive(Debug)]
 pub struct HS<'a, 'b> {
+    dir: String,
     sc: &'a Scanner,
     mg: &'b Manager,
+}
+
+impl<'a, 'b> HS<'a, 'b> {
+    fn new(dir: &'d str, sc: &'a Scanner, &'b Manager) -> HS<'a, 'b> {
+        HS {
+            dir: dir.to_owned(),
+            sc,
+            mg,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
