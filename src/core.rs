@@ -55,7 +55,6 @@ impl Scanner {
                 if fileBuf[i + j] != *searchByte {
                     continue 'fileLoop;
                 }
-                println!("------------------{}", String::from_utf8(vec!(*byte)).unwrap());
                 if j == term.len() - 1 {
                     return true;
                 }
