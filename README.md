@@ -1,2 +1,2 @@
 # Haystack
-> Find all files that contain a searched text. (WIP)
+> Find all files that contain a given text. (WIP)
