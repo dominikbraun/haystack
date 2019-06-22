@@ -14,7 +14,7 @@ pub struct Manager {
 
 impl Manager {
     pub fn new(term: &str, pool_size: usize) -> Result<Manager, Error> {
-        if term.len() == 0 {
+        if term.is_empty() {
             return Result::Err(Error::new(ErrorKind::InvalidInput, "empty search term is not allowed"));
         }
 
@@ -24,7 +24,7 @@ impl Manager {
         })
     }
 
-    fn take_file(&self, name: &str, buf: &Vec<u8>) {
+    fn take_file(&self, name: &str, buf: &[u8]) {
         let res = self.pool.last().unwrap().process(buf, &self.term);
         
         if res {
@@ -37,7 +37,7 @@ impl Manager {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run<'a>(&self, mg: &'a Manager, dir: &str) -> Result<(), io::Error> {
+    pub fn run(self, mg: &Manager, dir: &str) -> Result<(), io::Error> {
         let mut buf: Vec<u8> = Vec::new();
 
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
@@ -58,7 +58,7 @@ impl Scanner {
 struct Worker {}
 
 impl Worker {
-    fn process(&self, buf: &Vec<u8>, term: &str) -> bool {
+    fn process(self, buf: &[u8], term: &str) -> bool {
         let term = term.as_bytes();
 
         'bytes: for (i, _) in buf.iter().enumerate() {
@@ -98,14 +98,14 @@ mod tests {
     #[test]
     fn empty_buffer() {
         let w = Worker {};
-        let buf: Vec<u8> = vec![];
+        let buf = vec![];
         assert!(!w.process(&buf, "text"), "empty buffer should return false");
     }
 
     #[test]
     fn find_at_end() {
         let w = Worker {};
-        let buf: Vec<u8> = "0123456789".as_bytes().to_vec();
+        let buf = "0123456789".as_bytes();
         assert!(w.process(&buf, "789"), "finding the search term at the end should return true");
     }
 
@@ -113,28 +113,28 @@ mod tests {
     #[test]
     fn find_only_half_at_end() {
         let w = Worker {};
-        let buf: Vec<u8> = "0123456789".as_bytes().to_vec();
+        let buf = "0123456789".as_bytes();
         assert!(!w.process(&buf, "8910"), "finding the pattern only half at the end should return false");
     }
 
     #[test]
     fn find_at_beginning() {
         let w = Worker {};
-        let buf: Vec<u8> = "0123456789".as_bytes().to_vec();
+        let buf = "0123456789".as_bytes();
         assert!(w.process(&buf, "012"), "finding the pattern at the beginning should return true");
     }
 
     #[test]
     fn find_at_center() {
         let w = Worker {};
-        let buf: Vec<u8> = "0123456789".as_bytes().to_vec();
+        let buf = "0123456789".as_bytes();
         assert!(w.process(&buf, "456"), "finding the pattern at the center should return true");
     }
 
     #[test]
     fn finding_nothing() {
         let w = Worker {};
-        let buf: Vec<u8> = "0123456789".as_bytes().to_vec();
+        let buf = "0123456789".as_bytes();
         assert!(!w.process(&buf, "asdf"), "finding nothing should return false");
     }
 }
