@@ -1,5 +1,6 @@
-use crate::core::Scanner;
 use std::io;
+
+use crate::core::HS;
 
 mod core;
 
@@ -7,6 +8,7 @@ mod core;
 const DIR: &str = "./";
 
 fn main() -> Result<(), io::Error> {
-    let scanner = Scanner{};
-    scanner.run(DIR)
+    let haystack = HS::new();
+
+    haystack.run(DIR)
 }

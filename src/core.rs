@@ -1,14 +1,28 @@
 extern crate walkdir;
 
-use walkdir::WalkDir;
 use std::fs::File;
-use std::io::Read;
 use std::io;
+use std::io::Read;
+
+use walkdir::WalkDir;
 
 #[derive(Debug)]
-pub struct HS<'a, 'b> {
-    sc: &'a Scanner,
-    mg: &'b Manager,
+pub struct HS {
+    sc: Scanner,
+    mg: Manager,
+}
+
+impl HS {
+    pub fn new() -> HS {
+        HS {
+            sc: Scanner {},
+            mg: Manager { pool: vec![] },
+        }
+    }
+
+    pub fn run(&self, path: &str) -> Result<(), io::Error> {
+        self.sc.run(path)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
