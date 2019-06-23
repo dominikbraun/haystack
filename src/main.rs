@@ -1,5 +1,6 @@
 use std::io;
 use std::thread;
+
 use crossbeam::channel as cc;
 
 use crate::core::Manager;
@@ -34,6 +35,7 @@ fn run_exp(dir: &str, term: &str) -> Result<(), io::Error> {
 
     let haystack = exp::Manager::new(term, 5)?;
 
+    let dir = dir.to_owned();
     thread::spawn(move || {
         let _ = exp::Scanner{}.run(dir, tx);
     });

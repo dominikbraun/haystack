@@ -1,12 +1,13 @@
-extern crate walkdir;
 extern crate crossbeam;
+extern crate walkdir;
 
 use std::fs::File;
-use std::path::Path;
 use std::io;
 use std::io::{Error, ErrorKind, Read};
-use walkdir::WalkDir;
+use std::path::Path;
+
 use crossbeam::channel as cc;
+use walkdir::WalkDir;
 
 const CH_BUF_SIZE: u8 = 10;
 
@@ -41,7 +42,7 @@ impl Manager {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(&self, dir: &str, tx: cc::Sender<String>) -> Result<(), io::Error> {
+    pub fn run(&self, dir: String, tx: cc::Sender<String>) -> Result<(), io::Error> {
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
             if item.file_type().is_file() {
                 let path = item.path().display().to_string();
