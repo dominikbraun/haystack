@@ -55,7 +55,7 @@ impl Scanner {
                 tx.send(path);
             }
         }
-        // channels close
+        // channel close
         drop(tx);
         Ok(())
     }
