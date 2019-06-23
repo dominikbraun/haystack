@@ -4,9 +4,8 @@ extern crate walkdir;
 use std::fs::File;
 use std::io;
 use std::io::{Error, ErrorKind, Read};
-use std::thread;
 use std::path::Path;
-use std::sync::mpsc::TryRecvError;
+use std::thread;
 
 use crossbeam::channel as cc;
 use walkdir::WalkDir;
@@ -32,27 +31,39 @@ impl Manager {
     }
 
     pub fn recv(&self, rx: cc::Receiver<String>) {
-        let (work_tx, work_rx) = cc::bounded(WORKER_BUF_SIZE);
+        let (worker_finish_tx, worker_finish_rx) = cc::bounded(self.pool_size);
 
-        for _ in 1..self.pool_size {
-            let term = self.term.clone();
-            let work_rx = work_rx.clone();
+        // worker_finish_ has to live longer than work_ else --> deadlock
+        {
+            let (work_tx, work_rx) = cc::bounded(WORKER_BUF_SIZE);
 
-            thread::spawn(move || {
-                Worker{term}.reicv(work_rx);
-            });
+            for _ in 0..self.pool_size {
+                let term = self.term.clone();
+                let work_rx = work_rx.clone();
+                let worker_finish_tx = worker_finish_tx.clone();
+
+                thread::spawn(move || {
+                    Worker { term }.reicv(work_rx, worker_finish_tx);
+                });
+            }
+
+            loop {
+                match rx.try_recv() {
+                    Ok(job) => {
+                        work_tx.send(job);
+                    },
+                    Err(e) => {
+                        if e.is_disconnected() {
+                            break;
+                        }
+                    },
+                }
+            }
         }
 
         loop {
-            match rx.try_recv() {
-                Ok(job) => {
-                    work_tx.send(job);
-                },
-                Err(e) => {
-                    if e.is_disconnected() {
-                        break;
-                    }
-                },
+            if worker_finish_rx.len() == self.pool_size { // wait  until all workers are done
+                break;
             }
         }
     }
@@ -85,7 +96,7 @@ struct Worker {
 }
 
 impl Worker {
-    fn reicv(&self, work_rx: cc::Receiver<String>) {
+    fn reicv(&self, work_rx: cc::Receiver<String>, finished: cc::Sender<bool>) {
         let mut buf = Vec::new();
 
         loop {
@@ -108,6 +119,7 @@ impl Worker {
                 },
             }
         }
+        finished.send(true).unwrap();
     }
 
     fn process(&self, buf: &[u8], term: &str) -> bool {
