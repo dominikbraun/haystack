@@ -27,5 +27,8 @@ fn run_stable(dir: &str, term: &str) -> Result<(), io::Error> {
 }
 
 fn run_exp(dir: &str, term: &str) -> Result<(), io::Error> {
+    let haystack = Manager::new(term, 5)?;
+    let _ = Scanner{}.run(&haystack, dir);
+
     Ok(())
 }
