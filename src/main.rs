@@ -31,7 +31,6 @@ fn run_stable(dir: &str, term: &str) -> Result<(), io::Error> {
 
 fn run_exp(dir: &str, term: &str) -> Result<(), io::Error> {
     let (tx, rx) = cc::unbounded();
-
     let haystack = exp::Manager::new(term, 5)?;
 
     thread::spawn(move || {
