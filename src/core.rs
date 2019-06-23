@@ -15,7 +15,9 @@ pub struct Manager {
 impl Manager {
     pub fn new(term: &str, pool_size: usize) -> Result<Manager, Error> {
         if term.is_empty() {
-            return Result::Err(Error::new(ErrorKind::InvalidInput, "empty search term is not allowed"));
+            return Result::Err(
+                Error::new(ErrorKind::InvalidInput, "empty search term is not allowed")
+            );
         }
         let mg = Manager {
             term: term.to_owned(),

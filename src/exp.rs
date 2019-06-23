@@ -1,10 +1,14 @@
 extern crate walkdir;
+extern crate crossbeam;
 
 use std::fs::File;
+use std::path::Path;
 use std::io;
 use std::io::{Error, ErrorKind, Read};
-
 use walkdir::WalkDir;
+use crossbeam::channel as cc;
+
+const CH_BUF_SIZE: u8 = 10;
 
 #[derive(Debug, Clone)]
 pub struct Manager {
@@ -24,6 +28,12 @@ impl Manager {
         Result::Ok(mg)
     }
 
+    pub fn recv(&self, rx: cc::Receiver<&Path>) {
+        for job in rx.iter().collect() {
+            println!("{:?}", job);
+        }
+    }
+
     fn take_file(&self, name: &str, buf: &[u8]) {
         let res = self.pool.last().unwrap().process(buf, &self.term);
         
@@ -33,21 +43,14 @@ impl Manager {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(self, mg: &Manager, dir: &str) -> Result<(), io::Error> {
-        let mut buf: Vec<u8> = Vec::new();
-
+    pub fn run(&self, dir: &str, tx: cc::Sender<&Path>) -> Result<(), io::Error> {
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
             if item.file_type().is_file() {
-                let mut handle = File::open(item.path())?;
-
-                buf.clear();
-                handle.read_to_end(&mut buf)?;
-
-                mg.take_file(item.path().to_str().unwrap(), &buf);
+                tx.send(item.path());
             }
         }
         Ok(())
