@@ -1,5 +1,6 @@
 use std::io;
 use std::thread;
+use std::time::Instant;
 
 use crossbeam::channel as cc;
 
@@ -11,16 +12,26 @@ mod app;
 mod exp;
 
 fn main() -> Result<(), io::Error> {
+    let now = Instant::now();
+
     let matches = app::build().get_matches();
 
     let dir = matches.value_of("haystack").unwrap();
     let term = matches.value_of("needle").unwrap();
 
-    if matches.is_present("exp") {
+    let res = if matches.is_present("exp") {
         run_exp(dir, term)
     } else {
         run_stable(dir, term)
+    };
+
+    if matches.is_present("benchmark") {
+        println!("\nElapsed time:\n{} µs", now.elapsed().as_micros());
+        println!("{} ms", now.elapsed().as_millis());
+        println!("{} s", now.elapsed().as_secs());
     }
+
+    return res;
 }
 
 fn run_stable(dir: &str, term: &str) -> Result<(), io::Error> {

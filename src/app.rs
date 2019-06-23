@@ -8,6 +8,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(arg_needle())
         .arg(flag_recursive())
         .arg(flag_exp())
+        .arg(flag_benchmark())
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
@@ -43,6 +44,15 @@ fn flag_exp() -> Arg<'static, 'static> {
         .short("e")
         .long("exp")
         .help("Use experimental, non-stable techniques")
+        .takes_value(false)
+        .required(false)
+}
+
+fn flag_benchmark() -> Arg<'static, 'static> {
+    Arg::with_name("benchmark")
+        .short("b")
+        .long("benchmark")
+        .help("Benchmark the search")
         .takes_value(false)
         .required(false)
 }
