@@ -5,6 +5,7 @@ use crate::core::Scanner;
 
 mod core;
 mod app;
+mod exp;
 
 fn main() -> Result<(), io::Error> {
     let matches = app::build().get_matches();
@@ -27,8 +28,8 @@ fn run_stable(dir: &str, term: &str) -> Result<(), io::Error> {
 }
 
 fn run_exp(dir: &str, term: &str) -> Result<(), io::Error> {
-    let haystack = Manager::new(term, 5)?;
-    let _ = Scanner{}.run(&haystack, dir);
+    let haystack = exp::Manager::new(term, 5)?;
+    let _ = exp::Scanner{}.run(&haystack, dir);
 
     Ok(())
 }
