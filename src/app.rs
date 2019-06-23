@@ -9,6 +9,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(flag_recursive())
         .arg(flag_exp())
         .arg(flag_benchmark())
+        .arg(arg_ps())
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
@@ -43,7 +44,7 @@ fn flag_exp() -> Arg<'static, 'static> {
     Arg::with_name("exp")
         .short("e")
         .long("exp")
-        .help("Use experimental, non-stable techniques")
+        .help("Use experimental, non-stable techniques.")
         .takes_value(false)
         .required(false)
 }
@@ -54,5 +55,14 @@ fn flag_benchmark() -> Arg<'static, 'static> {
         .long("benchmark")
         .help("Benchmark the search")
         .takes_value(false)
+        .required(false)
+}
+
+fn arg_ps() -> Arg<'static, 'static> {
+    Arg::with_name("ps")
+        .short("s")
+        .long("ps")
+        .help("The worker pool size, i. e. number of threads.")
+        .takes_value(true)
         .required(false)
 }
