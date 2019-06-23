@@ -1,11 +1,12 @@
 extern crate crossbeam;
 extern crate walkdir;
 
+use std::{io, thread, time};
 use std::fs::File;
-use std::io;
 use std::io::{Error, ErrorKind, Read};
 use std::path::Path;
 use std::sync::mpsc::TryRecvError;
+use std::thread::Thread;
 
 use crossbeam::channel as cc;
 use walkdir::WalkDir;
@@ -30,10 +31,10 @@ impl Manager {
         Result::Ok(mg)
     }
 
-    pub fn recv(&self, rx: cc::Receiver<String>) {
+    pub fn recv(&self, rx: cc::Receiver<String>, name: &str) {
         loop {
             match rx.try_recv() {
-                Ok(job) => println!("{:?}", job),
+                Ok(job) => println!("{}: {:?}", name, job),
                 Err(err) => {
                     if err.is_disconnected() {
                         break;
