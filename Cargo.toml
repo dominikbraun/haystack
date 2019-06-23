@@ -7,3 +7,4 @@ edition = "2018"
 [dependencies]
 walkdir = "2"
 clap = "2.33.0"
+crossbeam = "0.7"
