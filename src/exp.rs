@@ -55,8 +55,15 @@ impl Scanner {
                 tx.send(path);
             }
         }
-        // channel close
+
+        loop {
+            if tx.is_empty() {
+                break; // wait until all are read
+            }
+        }
+        // close channel
         drop(tx);
+
         Ok(())
     }
 }
