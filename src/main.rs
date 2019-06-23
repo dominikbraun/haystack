@@ -32,15 +32,14 @@ fn run_stable(dir: &str, term: &str) -> Result<(), io::Error> {
 
 fn run_exp(dir: &str, term: &str) -> Result<(), io::Error> {
     let (tx, rx) = cc::unbounded();
-    let (done, quit) = cc::bounded(0);
 
     let haystack = exp::Manager::new(term, 5)?;
 
     let dir = dir.to_owned();
     thread::spawn(move || {
-        let _ = exp::Scanner {}.run(dir, tx, done);
+        let _ = exp::Scanner {}.run(dir, tx);
     });
 
-    haystack.recv(rx, quit);
+    haystack.recv(rx);
     Ok(())
 }
