@@ -4,18 +4,19 @@ extern crate walkdir;
 use std::fs::File;
 use std::io;
 use std::io::{Error, ErrorKind, Read};
+use std::thread;
 use std::path::Path;
 use std::sync::mpsc::TryRecvError;
 
 use crossbeam::channel as cc;
 use walkdir::WalkDir;
 
-const CH_BUF_SIZE: u8 = 10;
+const WORKER_BUF_SIZE: usize = 10;
 
 #[derive(Debug, Clone)]
 pub struct Manager {
     term: String,
-    pool: Vec<Worker>,
+    pool_size: usize,
 }
 
 impl Manager {
@@ -25,17 +26,30 @@ impl Manager {
         }
         let mg = Manager {
             term: term.to_owned(),
-            pool: vec![Worker{}; pool_size],
+            pool_size,
         };
         Result::Ok(mg)
     }
 
     pub fn recv(&self, rx: cc::Receiver<String>) {
+        let (work_tx, work_rx) = cc::bounded(WORKER_BUF_SIZE);
+
+        for _ in 1..self.pool_size {
+            let term = self.term.clone();
+            let work_rx = work_rx.clone();
+
+            thread::spawn(move || {
+                Worker{term}.reicv(work_rx);
+            });
+        }
+
         loop {
             match rx.try_recv() {
-                Ok(job) => println!("{:?}", job),
-                Err(err) => {
-                    if err.is_disconnected() {
+                Ok(job) => {
+                    work_tx.send(job);
+                },
+                Err(e) => {
+                    if e.is_disconnected() {
                         break;
                     }
                 },
@@ -55,24 +69,48 @@ impl Scanner {
                 tx.send(path);
             }
         }
-
         loop {
             if tx.is_empty() {
-                break; // wait until all are read
+                break;
             }
         }
-        // close channel
         drop(tx);
-
         Ok(())
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-struct Worker {}
+#[derive(Debug, Clone)]
+struct Worker {
+    term: String,
+}
 
 impl Worker {
-    fn process(self, buf: &[u8], term: &str) -> bool {
+    fn reicv(&self, work_rx: cc::Receiver<String>) {
+        let mut buf = Vec::new();
+
+        loop {
+            match work_rx.try_recv() {
+                Ok(job) => {
+                    let mut handle = File::open(Path::new(&job)).unwrap();
+                    buf.clear();
+                    handle.read_to_end(&mut buf);
+
+                    let positive = self.process(&buf, &self.term);
+
+                    if positive {
+                        println!("Found in file {}", job);
+                    }
+                },
+                Err(e) => {
+                    if e.is_disconnected() {
+                        break;
+                    }
+                },
+            }
+        }
+    }
+
+    fn process(&self, buf: &[u8], term: &str) -> bool {
         let term = term.as_bytes();
 
         'bytes: for (i, _) in buf.iter().enumerate() {
