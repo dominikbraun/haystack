@@ -30,16 +30,10 @@ impl Manager {
         Result::Ok(mg)
     }
 
-    pub fn recv(&self, rx: cc::Receiver<String>, done: cc::Receiver<i32>) {
+    pub fn recv(&self, rx: cc::Receiver<String>) {
         loop {
-            let rx_iter: Vec<_> = rx.iter().collect();
-
-            for job in rx_iter {
-                println!("{:?}", job);
-            }
-
-            match done.try_recv() {
-                Ok(_) => break,
+            match rx.try_recv() {
+                Ok(job) => println!("{:?}", job),
                 Err(err) => {
                     if err.is_disconnected() {
                         break;
@@ -54,7 +48,7 @@ impl Manager {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(&self, dir: String, tx: cc::Sender<String>, done: cc::Sender<i32>) -> Result<(), io::Error> {
+    pub fn run(&self, dir: String, tx: cc::Sender<String>) -> Result<(), io::Error> {
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
             if item.file_type().is_file() {
                 let path = item.path().display().to_string();
@@ -63,7 +57,6 @@ impl Scanner {
         }
         // channels close
         drop(tx);
-        drop(done);
         Ok(())
     }
 }
