@@ -10,8 +10,6 @@ use std::thread;
 use crossbeam::channel as cc;
 use walkdir::WalkDir;
 
-const WORKER_BUF_SIZE: usize = 10;
-
 #[derive(Debug, Clone)]
 pub struct Manager {
     term: String,
@@ -35,7 +33,7 @@ impl Manager {
 
         // worker_finish_ has to live longer than work_ else --> deadlock
         {
-            let (work_tx, work_rx) = cc::bounded(WORKER_BUF_SIZE);
+            let (work_tx, work_rx) = cc::bounded(self.pool_size * 2);
 
             for _ in 0..self.pool_size {
                 let term = self.term.clone();
