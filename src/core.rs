@@ -17,11 +17,11 @@ impl Manager {
         if term.len() == 0 {
             return Result::Err(Error::new(ErrorKind::InvalidInput, "empty search term is not allowed"));
         }
-
-        Result::Ok(Manager {
+        let mg = Manager {
             term: term.to_owned(),
             pool: vec![Worker{}; pool_size],
-        })
+        };
+        Result::Ok(mg)
     }
 
     fn take_file(&self, name: &str, buf: &Vec<u8>) {
@@ -65,7 +65,6 @@ impl Worker {
             if buf.len() - i <= term.len() {
                 return false;
             }
-
             for (j, term_b) in term.iter().enumerate() {
                 if buf[i + j] != *term_b {
                     continue 'bytes;
