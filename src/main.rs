@@ -12,8 +12,15 @@ fn main() -> Result<(), io::Error> {
     let dir = matches.value_of("haystack").unwrap_or("./");
     let term = matches.value_of("needle").unwrap();
 
+    if matches.is_present("exp") {
+        run_exp(dir, term)
+    }
     let haystack = Manager::new(term, 5)?;
     let _ = Scanner{}.run(&haystack, dir);
 
+    Ok(())
+}
+
+fn run_exp(dir: &str, term: &str) -> Result<(), io::Error> {
     Ok(())
 }

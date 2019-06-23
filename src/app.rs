@@ -7,6 +7,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(arg_dir())
         .arg(arg_needle())
         .arg(flag_recursive())
+        .arg(flag_exp())
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
@@ -33,6 +34,15 @@ fn flag_recursive() -> Arg<'static, 'static> {
         .short("r")
         .long("recursive")
         .help("Search files in all subdirectories, too.")
+        .takes_value(false)
+        .required(false)
+}
+
+fn flag_exp() -> Arg<'static, 'static> {
+    Arg::with_name("exp")
+        .short("e")
+        .long("exp")
+        .help("Use experimental, non-stable techniques")
         .takes_value(false)
         .required(false)
 }

@@ -90,7 +90,8 @@ mod tests {
         let m = Manager::new("", 5);
         match m {
             Ok(_) => panic!("this call should return an error"),
-            Err(err) => assert!(err.kind() == ErrorKind::InvalidInput && err.description() == "empty search term is not allowed", "wrong error returned: {}", err)
+            Err(err) => assert!(err.kind() == ErrorKind::InvalidInput && err.description() == "empty search term is not allowed",
+                "wrong error returned: {}", err)
         }
     }
 
@@ -98,42 +99,48 @@ mod tests {
     fn empty_buffer() {
         let w = Worker {};
         let buf = vec![];
-        assert!(!w.process(&buf, "text"), "empty buffer should return false");
+        assert!(!w.process(&buf, "text"),
+            "empty buffer should return false");
     }
 
     #[test]
     fn find_at_end() {
         let w = Worker {};
         let buf = "0123456789".as_bytes();
-        assert!(w.process(&buf, "789"), "finding the search term at the end should return true");
+        assert!(w.process(&buf, "789"),
+            "finding the search term at the end should return true");
     }
 
-    /// This test should NOT fail (e.g. index out of bounds)
+    /// This test should NOT fail (e. g. index out of bounds)
     #[test]
     fn find_only_half_at_end() {
         let w = Worker {};
         let buf = "0123456789".as_bytes();
-        assert!(!w.process(&buf, "8910"), "finding the pattern only half at the end should return false");
+        assert!(!w.process(&buf, "8910"),
+            "finding the pattern only half at the end should return false");
     }
 
     #[test]
     fn find_at_beginning() {
         let w = Worker {};
         let buf = "0123456789".as_bytes();
-        assert!(w.process(&buf, "012"), "finding the pattern at the beginning should return true");
+        assert!(w.process(&buf, "012"),
+            "finding the pattern at the beginning should return true");
     }
 
     #[test]
     fn find_at_center() {
         let w = Worker {};
         let buf = "0123456789".as_bytes();
-        assert!(w.process(&buf, "456"), "finding the pattern at the center should return true");
+        assert!(w.process(&buf, "456"),
+            "finding the pattern at the center should return true");
     }
 
     #[test]
     fn finding_nothing() {
         let w = Worker {};
         let buf = "0123456789".as_bytes();
-        assert!(!w.process(&buf, "asdf"), "finding nothing should return false");
+        assert!(!w.process(&buf, "asdf"),
+            "finding nothing should return false");
     }
 }
