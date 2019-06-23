@@ -35,14 +35,6 @@ impl Manager {
             println!("{:?}", job);
         }
     }
-
-    fn take_file(&self, name: &str, buf: &[u8]) {
-        let res = self.pool.last().unwrap().process(buf, &self.term);
-        
-        if res {
-            println!("{}", name);
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -56,6 +48,7 @@ impl Scanner {
                 tx.send(path);
             }
         }
+        drop(tx);
         Ok(())
     }
 }

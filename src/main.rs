@@ -32,6 +32,8 @@ fn run_exp(dir: &str, term: &str) -> Result<(), io::Error> {
     let (tx, rx) = cc::unbounded();
 
     let haystack = exp::Manager::new(term, 5)?;
+    haystack.recv(rx);
+
     let _ = exp::Scanner{}.run(dir, tx);
 
     Ok(())
