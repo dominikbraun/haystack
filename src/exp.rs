@@ -28,8 +28,10 @@ impl Manager {
         Result::Ok(mg)
     }
 
-    pub fn recv(&self, rx: cc::Receiver<&Path>) {
-        for job in rx.iter().collect() {
+    pub fn recv(&self, rx: cc::Receiver<String>) {
+        let rx_iter: Vec<_> = rx.try_iter().collect();
+
+        for job in rx_iter {
             println!("{:?}", job);
         }
     }
@@ -47,10 +49,11 @@ impl Manager {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(&self, dir: &str, tx: cc::Sender<&Path>) -> Result<(), io::Error> {
+    pub fn run(&self, dir: &str, tx: cc::Sender<String>) -> Result<(), io::Error> {
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
             if item.file_type().is_file() {
-                tx.send(item.path());
+                let path = item.path().display().to_string();
+                tx.send(path);
             }
         }
         Ok(())
