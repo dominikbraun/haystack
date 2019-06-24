@@ -10,6 +10,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(flag_exp())
         .arg(flag_benchmark())
         .arg(arg_ps())
+        .arg(arg_ts())
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
@@ -63,6 +64,15 @@ fn arg_ps() -> Arg<'static, 'static> {
         .short("s")
         .long("ps")
         .help("The worker pool size, i. e. number of threads.")
+        .takes_value(true)
+        .required(false)
+}
+
+fn arg_ts() -> Arg<'static, 'static> {
+    Arg::with_name("trimsize")
+        .short("t")
+        .long("trimsize")
+        .help("If the worker buffer is bigger than this size, it will be trimmed to the current content.")
         .takes_value(true)
         .required(false)
 }

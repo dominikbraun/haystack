@@ -18,14 +18,20 @@ fn main() -> Result<(), io::Error> {
 
     let dir = matches.value_of("haystack").unwrap();
     let term = matches.value_of("needle").unwrap();
+    let trim_size = matches
+        .value_of("trimsize")
+        .unwrap_or("500000000")
+        .parse::<usize>()
+        .unwrap();
 
-    let pool_size = matches.value_of("ps")
-                            .unwrap_or("4")
-                            .parse::<usize>()
-                            .unwrap();
+    let pool_size = matches
+        .value_of("ps")
+        .unwrap_or("4")
+        .parse::<usize>()
+        .unwrap();
 
     let res = if matches.is_present("exp") {
-        run_exp(dir, term, pool_size)
+        run_exp(dir, term, pool_size, trim_size)
     } else {
         run_stable(dir, term)
     };
@@ -46,7 +52,7 @@ fn run_stable(dir: &str, term: &str) -> Result<(), io::Error> {
     Ok(())
 }
 
-fn run_exp(dir: &str, term: &str, pool_size: usize) -> Result<(), io::Error> {
+fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<(), io::Error> {
     let (tx, rx) = cc::unbounded();
     let haystack = exp::Manager::new(term, pool_size)?;
 
@@ -56,6 +62,6 @@ fn run_exp(dir: &str, term: &str, pool_size: usize) -> Result<(), io::Error> {
         let _ = exp::Scanner{}.run(dir, tx);
     });
 
-    haystack.recv(rx);
+    haystack.recv(rx, trim_size);
     Ok(())
 }

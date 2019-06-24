@@ -28,7 +28,7 @@ impl Manager {
         Result::Ok(mg)
     }
 
-    pub fn recv(&self, rx: cc::Receiver<String>) {
+    pub fn recv(&self, rx: cc::Receiver<String>, trim_size: usize) {
         let (worker_finish_tx, worker_finish_rx) = cc::bounded(self.pool_size);
 
         // worker_finish_ has to live longer than work_ else --> deadlock
@@ -41,7 +41,10 @@ impl Manager {
                 let worker_finish_tx = worker_finish_tx.clone();
 
                 thread::spawn(move || {
-                    Worker { term }.reicv(work_rx, worker_finish_tx);
+                    Worker {
+                        term,
+                        trim_size,
+                    }.reicv(work_rx, worker_finish_tx);
                 });
             }
 
@@ -91,6 +94,7 @@ impl Scanner {
 #[derive(Debug, Clone)]
 struct Worker {
     term: String,
+    trim_size: usize,
 }
 
 impl Worker {
@@ -103,6 +107,9 @@ impl Worker {
                     let mut handle = File::open(Path::new(&job)).unwrap();
                     buf.clear();
                     handle.read_to_end(&mut buf);
+                    if buf.len() > self.trim_size && buf.capacity() > self.trim_size {
+                        buf.shrink_to_fit();
+                    }
 
                     let positive = self.process(&buf, &self.term);
 
