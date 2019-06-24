@@ -42,10 +42,6 @@ fn main() -> Result<(), io::Error> {
         println!("{} s", now.elapsed().as_secs());
     };
 
-    if res.is_ok() {
-        ;
-    }
-
     match res {
         Ok(count) => println!("found {} times", res.unwrap()),
         Err(err) => return Err(err),
