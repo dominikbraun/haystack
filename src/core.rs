@@ -26,12 +26,14 @@ impl Manager {
         Result::Ok(mg)
     }
 
-    fn take_file(&self, name: &str, buf: &[u8]) {
+    fn take_file(&self, name: &str, buf: &[u8]) -> bool {
         let res = self.pool.last().unwrap().process(buf, &self.term);
         
         if res {
             println!("{}", name);
         }
+
+        return res;
     }
 }
 
@@ -39,8 +41,9 @@ impl Manager {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(self, mg: &Manager, dir: &str) -> Result<(), io::Error> {
+    pub fn run(self, mg: &Manager, dir: &str) -> Result<usize, io::Error> {
         let mut buf: Vec<u8> = Vec::new();
+        let mut counter: usize = 0;
 
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
             if item.file_type().is_file() {
@@ -49,10 +52,12 @@ impl Scanner {
                 buf.clear();
                 handle.read_to_end(&mut buf)?;
 
-                mg.take_file(item.path().to_str().unwrap(), &buf);
+                if mg.take_file(item.path().to_str().unwrap(), &buf) {
+                    counter = counter + 1;
+                }
             }
         }
-        Ok(())
+        Ok(counter)
     }
 }
 

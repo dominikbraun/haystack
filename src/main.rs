@@ -42,17 +42,26 @@ fn main() -> Result<(), io::Error> {
         println!("{} s", now.elapsed().as_secs());
     };
 
+    if res.is_ok() {
+        ;
+    }
+
+    match res {
+        Ok(count) => println!("found {} times", res.unwrap()),
+        Err(err) => return Err(err),
+    };
+
+    return Ok(());
+}
+
+fn run_stable(dir: &str, term: &str) -> Result<usize, io::Error> {
+    let haystack = Manager::new(term, 5)?;
+    let res = Scanner {}.run(&haystack, dir);
+
     return res;
 }
 
-fn run_stable(dir: &str, term: &str) -> Result<(), io::Error> {
-    let haystack = Manager::new(term, 5)?;
-    let _ = Scanner{}.run(&haystack, dir);
-
-    Ok(())
-}
-
-fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<(), io::Error> {
+fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<usize, io::Error> {
     let (tx, rx) = cc::unbounded();
     let haystack = exp::Manager::new(term, pool_size)?;
 
@@ -62,6 +71,5 @@ fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<
         let _ = exp::Scanner{}.run(dir, tx);
     });
 
-    haystack.recv(rx, trim_size);
-    Ok(())
+    Ok(haystack.recv(rx, trim_size))
 }

@@ -1,3 +1,4 @@
+extern crate atomic_counter;
 extern crate crossbeam;
 extern crate walkdir;
 
@@ -5,10 +6,13 @@ use std::fs::File;
 use std::io;
 use std::io::{Error, ErrorKind, Read};
 use std::path::Path;
+use std::sync::Arc;
 use std::thread;
 
 use crossbeam::channel as cc;
 use walkdir::WalkDir;
+
+use self::atomic_counter::AtomicCounter;
 
 #[derive(Debug, Clone)]
 pub struct Manager {
@@ -28,8 +32,9 @@ impl Manager {
         Result::Ok(mg)
     }
 
-    pub fn recv(&self, rx: cc::Receiver<String>, trim_size: usize) {
+    pub fn recv(&self, rx: cc::Receiver<String>, trim_size: usize) -> usize {
         let (worker_finish_tx, worker_finish_rx) = cc::bounded(self.pool_size);
+        let counter = Arc::new(atomic_counter::RelaxedCounter::new(0));
 
         // worker_finish_ has to live longer than work_ else --> deadlock
         {
@@ -39,11 +44,13 @@ impl Manager {
                 let term = self.term.clone();
                 let work_rx = work_rx.clone();
                 let worker_finish_tx = worker_finish_tx.clone();
+                let counter = counter.clone();
 
                 thread::spawn(move || {
                     Worker {
                         term,
                         trim_size,
+                        counter,
                     }.reicv(work_rx, worker_finish_tx);
                 });
             }
@@ -67,6 +74,8 @@ impl Manager {
                 break;
             }
         }
+
+        return counter.get();
     }
 }
 
@@ -95,6 +104,7 @@ impl Scanner {
 struct Worker {
     term: String,
     trim_size: usize,
+    counter: Arc<atomic_counter::RelaxedCounter>,
 }
 
 impl Worker {
@@ -115,6 +125,7 @@ impl Worker {
 
                     if positive {
                         println!("Found in file {}", job);
+                        self.counter.inc();
                     }
                 },
                 Err(e) => {
