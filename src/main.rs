@@ -20,7 +20,7 @@ fn main() -> Result<(), io::Error> {
     let term = matches.value_of("needle").unwrap();
     let trim_size = matches
         .value_of("trimsize")
-        .unwrap_or("500000000")
+        .unwrap_or("15000")
         .parse::<usize>()
         .unwrap();
 
@@ -60,10 +60,9 @@ fn run_stable(dir: &str, term: &str) -> Result<usize, io::Error> {
 fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<usize, io::Error> {
     let haystack = exp::Manager::new(term, pool_size)?;
 
-    haystack.start(trim_size);
-
     let dir = dir.to_owned();
-    let _ = exp::Scanner{}.run(dir, &haystack);
 
-    Ok(haystack.stop())
+    let _ = exp::Scanner{}.run(dir, &haystack, trim_size);
+
+    Ok(1 as usize)
 }

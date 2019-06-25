@@ -4,7 +4,7 @@ extern crate walkdir;
 
 use std::fs::File;
 use std::io;
-use std::io::{BufRead, BufReader, Error, ErrorKind, Read, Seek};
+use std::io::{Error, ErrorKind, Read};
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
@@ -18,11 +18,6 @@ use self::atomic_counter::AtomicCounter;
 pub struct Manager {
     term: String,
     pool_size: usize,
-    work_tx: cc::Sender<String>,
-    work_rx: cc::Receiver<String>,
-    worker_finish_tx: cc::Sender<bool>,
-    worker_finish_rx: cc::Receiver<bool>,
-    counter: Arc<atomic_counter::RelaxedCounter>,
 }
 
 impl Manager {
@@ -30,56 +25,47 @@ impl Manager {
         if term.is_empty() {
             return Result::Err(Error::new(ErrorKind::InvalidInput, "empty search term is not allowed"));
         }
-        let (work_tx, work_rx) = cc::bounded(pool_size * 2);
-        let (worker_finish_tx, worker_finish_rx) = cc::bounded(pool_size);
-        let counter = Arc::new(atomic_counter::RelaxedCounter::new(0));
-
         let mg = Manager {
             term: term.to_owned(),
             pool_size,
-            work_tx,
-            work_rx,
-            worker_finish_tx,
-            worker_finish_rx,
-            counter,
         };
-        
         Result::Ok(mg)
     }
-    
-    pub fn start(&self, buf_size: usize) {
-        for _ in 0..self.pool_size {
-            let term = self.term.clone();
-            let work_rx = self.work_rx.clone();
-            let worker_finish_tx = self.worker_finish_tx.clone();
-            let counter = self.counter.clone();
 
-            thread::spawn(move || {
-                Worker {
-                    term,
-                    buf_size,
-                    counter,
-                }.reicv(work_rx, worker_finish_tx);
-            });
-        }
-    }
+    pub fn recv(&self, name: String, trim_size: usize) -> usize {
+        let (worker_finish_tx, worker_finish_rx) = cc::bounded(self.pool_size);
+        let counter = Arc::new(atomic_counter::RelaxedCounter::new(0));
 
-    pub fn recv(&self, job: String) {
-        self.work_tx.send(job);
-    }
+        // worker_finish_ has to live longer than work_ else --> deadlock
+        {
+            let (work_tx, work_rx) = cc::bounded(self.pool_size * 2);
 
-    pub fn stop(&self) -> usize {
-        // send empty string for each worker (empty string is command for closing)
-        for i in 0..self.pool_size {
-            self.work_tx.send(String::new());
+            for _ in 0..self.pool_size {
+                let term = self.term.clone();
+                let work_rx = work_rx.clone();
+                let worker_finish_tx = worker_finish_tx.clone();
+                let counter = counter.clone();
+
+                thread::spawn(move || {
+                    Worker {
+                        term,
+                        trim_size,
+                        counter,
+                    }.reicv(work_rx, worker_finish_tx);
+                });
+            }
+
+            work_tx.send(name);
+            ()
         }
 
         loop {
-            if self.worker_finish_rx.len() == self.pool_size {
+            if worker_finish_rx.len() == self.pool_size { // wait  until all workers are done
                 break;
             }
         }
-        return self.counter.get();
+
+        return counter.get();
     }
 }
 
@@ -87,15 +73,13 @@ impl Manager {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(&self, dir: String, mg: &Manager) -> Result<(), io::Error> {
+    pub fn run(&self, dir: String, mg: &Manager, trim_size: usize) -> Result<(), io::Error> {
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
             if item.file_type().is_file() {
                 let path = item.path().display().to_string();
-                mg.recv(path);
+                mg.recv(path, trim_size);
             }
-        };
-
-        println!("test");
+        }
         Ok(())
     }
 }
@@ -103,31 +87,25 @@ impl Scanner {
 #[derive(Debug, Clone)]
 struct Worker {
     term: String,
-    buf_size: usize,
+    trim_size: usize,
     counter: Arc<atomic_counter::RelaxedCounter>,
 }
 
 impl Worker {
     fn reicv(&self, work_rx: cc::Receiver<String>, finished: cc::Sender<bool>) {
+        let mut buf = Vec::new();
+
         loop {
-            match work_rx.recv() {
+            match work_rx.try_recv() {
                 Ok(job) => {
-                    // empty string is signal for closing worker
-                    if job.is_empty() {
-                        break;
+                    let mut handle = File::open(Path::new(&job)).unwrap();
+                    buf.clear();
+                    handle.read_to_end(&mut buf);
+                    if buf.len() > self.trim_size && buf.capacity() > self.trim_size {
+                        buf.shrink_to_fit();
                     }
 
-                    let mut handle = match File::open(Path::new(&job)) {
-                        Ok(h) => h,
-                        Err(err) => {
-                            println!("Error while reading file {}: {}", job, err);
-                            continue;
-                        }
-                    };
-
-                    let mut reader = BufReader::new(handle);
-
-                    let positive = self.process(&mut reader, &self.term);
+                    let positive = self.process(&buf, &self.term);
 
                     if positive {
                         println!("Found in file {}", job);
@@ -135,67 +113,31 @@ impl Worker {
                     }
                 },
                 Err(e) => {
-                    break;
+                    if e.is_disconnected() {
+                        break;
+                    }
                 },
             }
-        };
-        println!("w finish");
+        }
         finished.send(true).unwrap();
     }
 
-    fn process(&self, reader: &mut BufReader<File>, term: &str) -> bool {
-        let mut buf = vec![0; self.buf_size];
-        let mut term_cursor = 0;
+    fn process(&self, buf: &[u8], term: &str) -> bool {
         let term = term.as_bytes();
 
-        loop {
-            match reader.read(&mut buf) {
-                Ok(size) => {
-                    if size == 0 {
-                        return false;
-                    }
-
-                    for i in 0..size {
-                        if buf[i] == term[term_cursor] {
-                            term_cursor = term_cursor + 1;
-                        } else if term_cursor > 0 {
-                            if buf[i] == term[0] {
-                                term_cursor = 1;
-                            } else {
-                                term_cursor = 0;
-                            }
-                        }
-
-                        if term_cursor == term.len() {
-                            return true;
-                        }
-                    }
+        'bytes: for (i, _) in buf.iter().enumerate() {
+            if buf.len() - i < term.len() {
+                return false;
+            }
+            for (j, term_b) in term.iter().enumerate() {
+                if buf[i + j] != *term_b {
+                    continue 'bytes;
                 }
-                Err(err) => {
-                    return false;
+                if j == term.len() - 1 {
+                    return true;
                 }
             }
         }
-
-        true
-
-        /*
-
-                let term = term.as_bytes();
-
-                'bytes: for (i, _) in buf.iter().enumerate() {
-                    if buf.len() - i < term.len() {
-                        return false;
-                    }
-                    for (j, term_b) in term.iter().enumerate() {
-                        if buf[i + j] != *term_b {
-                            continue 'bytes;
-                        }
-                        if j == term.len() - 1 {
-                            return true;
-                        }
-                    }
-                }
-                return false;*/
+        return false;
     }
 }
