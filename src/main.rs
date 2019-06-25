@@ -65,6 +65,5 @@ fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<
     let dir = dir.to_owned();
     let _ = exp::Scanner{}.run(dir, &haystack);
 
-    haystack.wait();
-    Ok(1)
+    Ok(haystack.stop())
 }

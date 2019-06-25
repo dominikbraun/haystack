@@ -68,7 +68,12 @@ impl Manager {
         self.work_tx.send(job);
     }
 
-    pub fn wait(&self) -> usize {
+    pub fn stop(&self) -> usize {
+        // send empty string for each worker (empty string is command for closing)
+        for i in 0..self.pool_size {
+            self.work_tx.send(String::new());
+        }
+
         loop {
             if self.worker_finish_rx.len() == self.pool_size {
                 break;
@@ -88,7 +93,9 @@ impl Scanner {
                 let path = item.path().display().to_string();
                 mg.recv(path);
             }
-        }
+        };
+
+        println!("test");
         Ok(())
     }
 }
@@ -103,8 +110,13 @@ struct Worker {
 impl Worker {
     fn reicv(&self, work_rx: cc::Receiver<String>, finished: cc::Sender<bool>) {
         loop {
-            match work_rx.try_recv() {
+            match work_rx.recv() {
                 Ok(job) => {
+                    // empty string is signal for closing worker
+                    if job.is_empty() {
+                        break;
+                    }
+
                     let mut handle = match File::open(Path::new(&job)) {
                         Ok(h) => h,
                         Err(err) => {
@@ -118,17 +130,16 @@ impl Worker {
                     let positive = self.process(&mut reader, &self.term);
 
                     if positive {
-                        println!("Found in file {}", job);
+                        println!("Found in file {} {}", job, self.counter.get());
                         self.counter.inc();
                     }
                 },
                 Err(e) => {
-                    if e.is_disconnected() {
-                        break;
-                    }
+                    break;
                 },
             }
-        }
+        };
+        println!("w finish");
         finished.send(true).unwrap();
     }
 
