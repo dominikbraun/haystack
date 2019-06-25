@@ -94,8 +94,6 @@ impl Scanner {
                 mg.recv(path);
             }
         };
-
-        println!("test");
         Ok(())
     }
 }
@@ -139,7 +137,6 @@ impl Worker {
                 },
             }
         };
-        println!("w finish");
         finished.send(true).unwrap();
     }
 
