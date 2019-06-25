@@ -25,7 +25,7 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(term: &str, pool_size: usize, buf_size: usize) -> Result<Manager, Error> {
+    pub fn new(term: &str, pool_size: usize) -> Result<Manager, Error> {
         if term.is_empty() {
             return Result::Err(Error::new(ErrorKind::InvalidInput, "empty search term is not allowed"));
         }
@@ -40,13 +40,11 @@ impl Manager {
             worker_finish_tx,
             worker_finish_rx,
         };
-
-        mg.start(buf_size);
         
         Result::Ok(mg)
     }
     
-    fn start(&self, buf_size: usize) -> usize {
+    pub fn start(&self, buf_size: usize) -> usize {
         let counter = Arc::new(atomic_counter::RelaxedCounter::new(0));
 
         for _ in 0..self.pool_size {
@@ -81,7 +79,7 @@ impl Manager {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(&self, dir: String, mg: Manager) -> Result<(), io::Error> {
+    pub fn run(&self, dir: String, mg: &Manager) -> Result<(), io::Error> {
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
             if item.file_type().is_file() {
                 let path = item.path().display().to_string();
