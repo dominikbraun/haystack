@@ -130,7 +130,7 @@ impl Worker {
                     let positive = self.process(&mut reader, &self.term);
 
                     if positive {
-                        println!("Found in file {} {}", job, self.counter.get());
+                        println!("Found in file {}", job);
                         self.counter.inc();
                     }
                 },
