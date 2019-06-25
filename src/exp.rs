@@ -140,25 +140,31 @@ impl Worker {
     }
 
     fn process(&self, reader: &mut BufReader<File>, term: &str) -> bool {
-        let mut buf = [0 as u8; 1];
+        let mut buf = [0 as u8; 1000];
         let mut term_cursor = 0;
         let term = term.as_bytes();
 
         loop {
-            match reader.read_exact(&mut buf) {
-                Ok(_) => {
-                    if buf[0] == term[term_cursor] {
-                        term_cursor = term_cursor + 1;
-                    } else if term_cursor > 0 {
-                        if buf[0] == term[0] {
-                            term_cursor = 1;
-                        } else {
-                            term_cursor = 0;
-                        }
+            match reader.read(&mut buf) {
+                Ok(size) => {
+                    if size == 0 {
+                        return false;
                     }
 
-                    if term_cursor == term.len() {
-                        return true;
+                    for i in 0..size {
+                        if buf[i] == term[term_cursor] {
+                            term_cursor = term_cursor + 1;
+                        } else if term_cursor > 0 {
+                            if buf[i] == term[0] {
+                                term_cursor = 1;
+                            } else {
+                                term_cursor = 0;
+                            }
+                        }
+
+                        if term_cursor == term.len() {
+                            return true;
+                        }
                     }
                 }
                 Err(err) => {
