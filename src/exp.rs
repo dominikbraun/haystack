@@ -18,64 +18,62 @@ use self::atomic_counter::AtomicCounter;
 pub struct Manager {
     term: String,
     pool_size: usize,
+    work_tx: cc::Sender<String>,
+    work_rx: cc::Receiver<String>,
+    worker_finish_tx: cc::Sender<bool>,
+    worker_finish_rx: cc::Receiver<bool>,
 }
 
 impl Manager {
-    pub fn new(term: &str, pool_size: usize) -> Result<Manager, Error> {
+    pub fn new(term: &str, pool_size: usize, buf_size: usize) -> Result<Manager, Error> {
         if term.is_empty() {
             return Result::Err(Error::new(ErrorKind::InvalidInput, "empty search term is not allowed"));
         }
+        let (work_tx, work_rx) = cc::bounded(pool_size * 2);
+        let (worker_finish_tx, worker_finish_rx) = cc::bounded(pool_size);
+
         let mg = Manager {
             term: term.to_owned(),
             pool_size,
+            work_tx,
+            work_rx,
+            worker_finish_tx,
+            worker_finish_rx,
         };
+
+        mg.start(buf_size);
+        
         Result::Ok(mg)
     }
-
-    pub fn recv(&self, rx: cc::Receiver<String>, trim_size: usize) -> usize {
-        let (worker_finish_tx, worker_finish_rx) = cc::bounded(self.pool_size);
+    
+    fn start(&self, buf_size: usize) -> usize {
         let counter = Arc::new(atomic_counter::RelaxedCounter::new(0));
 
-        // worker_finish_ has to live longer than work_ else --> deadlock
-        {
-            let (work_tx, work_rx) = cc::bounded(self.pool_size * 2);
+        for _ in 0..self.pool_size {
+            let term = self.term.clone();
+            let work_rx = self.work_rx.clone();
+            let worker_finish_tx = self.worker_finish_tx.clone();
+            let counter = counter.clone();
 
-            for _ in 0..self.pool_size {
-                let term = self.term.clone();
-                let work_rx = work_rx.clone();
-                let worker_finish_tx = worker_finish_tx.clone();
-                let counter = counter.clone();
-
-                thread::spawn(move || {
-                    Worker {
-                        term,
-                        trim_size,
-                        counter,
-                    }.reicv(work_rx, worker_finish_tx);
-                });
-            }
-
-            loop {
-                match rx.try_recv() {
-                    Ok(job) => {
-                        work_tx.send(job);
-                    },
-                    Err(e) => {
-                        if e.is_disconnected() {
-                            break;
-                        }
-                    },
-                }
-            }
+            thread::spawn(move || {
+                Worker {
+                    term,
+                    buf_size,
+                    counter,
+                }.reicv(work_rx, worker_finish_tx);
+            });
         }
 
         loop {
-            if worker_finish_rx.len() == self.pool_size { // wait  until all workers are done
+            if self.worker_finish_rx.len() == self.pool_size { // wait  until all workers are done
                 break;
             }
         }
-
         return counter.get();
+    }
+
+    pub fn recv(&self, job: String) {
+        self.work_tx.send(job);
     }
 }
 
@@ -83,19 +81,13 @@ impl Manager {
 pub struct Scanner {}
 
 impl Scanner {
-    pub fn run(&self, dir: String, tx: cc::Sender<String>) -> Result<(), io::Error> {
+    pub fn run(&self, dir: String, mg: Manager) -> Result<(), io::Error> {
         for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
             if item.file_type().is_file() {
                 let path = item.path().display().to_string();
-                tx.send(path);
+                mg.recv(path);
             }
         }
-        loop {
-            if tx.is_empty() {
-                break;
-            }
-        }
-        drop(tx);
         Ok(())
     }
 }
@@ -103,7 +95,7 @@ impl Scanner {
 #[derive(Debug, Clone)]
 struct Worker {
     term: String,
-    trim_size: usize,
+    buf_size: usize,
     counter: Arc<atomic_counter::RelaxedCounter>,
 }
 
@@ -140,7 +132,7 @@ impl Worker {
     }
 
     fn process(&self, reader: &mut BufReader<File>, term: &str) -> bool {
-        let mut buf = vec![0; self.trim_size];
+        let mut buf = vec![0; self.buf_size];
         let mut term_cursor = 0;
         let term = term.as_bytes();
 

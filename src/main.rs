@@ -58,14 +58,10 @@ fn run_stable(dir: &str, term: &str) -> Result<usize, io::Error> {
 }
 
 fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<usize, io::Error> {
-    let (tx, rx) = cc::unbounded();
-    let haystack = exp::Manager::new(term, pool_size)?;
+    let haystack = exp::Manager::new(term, pool_size, trim_size)?;
 
     let dir = dir.to_owned();
+    let _ = exp::Scanner{}.run(dir, haystack);
 
-    thread::spawn(move || {
-        let _ = exp::Scanner{}.run(dir, tx);
-    });
-
-    Ok(haystack.recv(rx, trim_size))
+    Ok(1)
 }
