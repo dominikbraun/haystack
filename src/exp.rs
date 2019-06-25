@@ -4,7 +4,7 @@ extern crate walkdir;
 
 use std::fs::File;
 use std::io;
-use std::io::{Error, ErrorKind, Read};
+use std::io::{BufRead, BufReader, Error, ErrorKind, Read, Seek};
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
@@ -109,19 +109,20 @@ struct Worker {
 
 impl Worker {
     fn reicv(&self, work_rx: cc::Receiver<String>, finished: cc::Sender<bool>) {
-        let mut buf = Vec::new();
-
         loop {
             match work_rx.try_recv() {
                 Ok(job) => {
-                    let mut handle = File::open(Path::new(&job)).unwrap();
-                    buf.clear();
-                    handle.read_to_end(&mut buf);
-                    if buf.len() > self.trim_size && buf.capacity() > self.trim_size {
-                        buf.shrink_to_fit();
-                    }
+                    let mut handle = match File::open(Path::new(&job)) {
+                        Ok(h) => h,
+                        Err(err) => {
+                            println!("Error while reading file {}: {}", job, err);
+                            continue;
+                        }
+                    };
 
-                    let positive = self.process(&buf, &self.term);
+                    let mut reader = BufReader::new(handle);
+
+                    let positive = self.process(&mut reader, &self.term);
 
                     if positive {
                         println!("Found in file {}", job);
@@ -138,22 +139,53 @@ impl Worker {
         finished.send(true).unwrap();
     }
 
-    fn process(&self, buf: &[u8], term: &str) -> bool {
+    fn process(&self, reader: &mut BufReader<File>, term: &str) -> bool {
+        let mut buf = [0 as u8; 1];
+        let mut term_cursor = 0;
         let term = term.as_bytes();
 
-        'bytes: for (i, _) in buf.iter().enumerate() {
-            if buf.len() - i < term.len() {
-                return false;
-            }
-            for (j, term_b) in term.iter().enumerate() {
-                if buf[i + j] != *term_b {
-                    continue 'bytes;
+        loop {
+            match reader.read_exact(&mut buf) {
+                Ok(_) => {
+                    if buf[0] == term[term_cursor] {
+                        term_cursor = term_cursor + 1;
+                    } else if term_cursor > 0 {
+                        if buf[0] == term[0] {
+                            term_cursor = 1;
+                        } else {
+                            term_cursor = 0;
+                        }
+                    }
+
+                    if term_cursor == term.len() {
+                        return true;
+                    }
                 }
-                if j == term.len() - 1 {
-                    return true;
+                Err(err) => {
+                    return false;
                 }
             }
         }
-        return false;
+
+        true
+
+        /*
+
+                let term = term.as_bytes();
+
+                'bytes: for (i, _) in buf.iter().enumerate() {
+                    if buf.len() - i < term.len() {
+                        return false;
+                    }
+                    for (j, term_b) in term.iter().enumerate() {
+                        if buf[i + j] != *term_b {
+                            continue 'bytes;
+                        }
+                        if j == term.len() - 1 {
+                            return true;
+                        }
+                    }
+                }
+                return false;*/
     }
 }
