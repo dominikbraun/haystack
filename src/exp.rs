@@ -22,6 +22,7 @@ pub struct Manager {
     work_rx: cc::Receiver<String>,
     worker_finish_tx: cc::Sender<bool>,
     worker_finish_rx: cc::Receiver<bool>,
+    counter: Arc<atomic_counter::RelaxedCounter>,
 }
 
 impl Manager {
@@ -31,6 +32,7 @@ impl Manager {
         }
         let (work_tx, work_rx) = cc::bounded(pool_size * 2);
         let (worker_finish_tx, worker_finish_rx) = cc::bounded(pool_size);
+        let counter = Arc::new(atomic_counter::RelaxedCounter::new(0));
 
         let mg = Manager {
             term: term.to_owned(),
@@ -39,19 +41,18 @@ impl Manager {
             work_rx,
             worker_finish_tx,
             worker_finish_rx,
+            counter,
         };
         
         Result::Ok(mg)
     }
     
-    pub fn start(&self, buf_size: usize) -> usize {
-        let counter = Arc::new(atomic_counter::RelaxedCounter::new(0));
-
+    pub fn start(&self, buf_size: usize) {
         for _ in 0..self.pool_size {
             let term = self.term.clone();
             let work_rx = self.work_rx.clone();
             let worker_finish_tx = self.worker_finish_tx.clone();
-            let counter = counter.clone();
+            let counter = self.counter.clone();
 
             thread::spawn(move || {
                 Worker {
@@ -61,17 +62,19 @@ impl Manager {
                 }.reicv(work_rx, worker_finish_tx);
             });
         }
-
-        loop {
-            if self.worker_finish_rx.len() == self.pool_size { // wait  until all workers are done
-                break;
-            }
-        }
-        return counter.get();
     }
 
     pub fn recv(&self, job: String) {
         self.work_tx.send(job);
+    }
+
+    pub fn wait(&self) -> usize {
+        loop {
+            if self.worker_finish_rx.len() == self.pool_size {
+                break;
+            }
+        }
+        return self.counter.get();
     }
 }
 
