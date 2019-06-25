@@ -140,7 +140,7 @@ impl Worker {
     }
 
     fn process(&self, reader: &mut BufReader<File>, term: &str) -> bool {
-        let mut buf = [0 as u8; 1000];
+        let mut buf = vec![0; self.trim_size];
         let mut term_cursor = 0;
         let term = term.as_bytes();
 
