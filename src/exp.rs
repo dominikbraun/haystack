@@ -178,24 +178,5 @@ impl Worker {
         }
 
         true
-
-        /*
-
-                let term = term.as_bytes();
-
-                'bytes: for (i, _) in buf.iter().enumerate() {
-                    if buf.len() - i < term.len() {
-                        return false;
-                    }
-                    for (j, term_b) in term.iter().enumerate() {
-                        if buf[i + j] != *term_b {
-                            continue 'bytes;
-                        }
-                        if j == term.len() - 1 {
-                            return true;
-                        }
-                    }
-                }
-                return false;*/
     }
 }
