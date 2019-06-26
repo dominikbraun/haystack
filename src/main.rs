@@ -17,7 +17,7 @@ fn main() -> Result<(), io::Error> {
 
     let dir = matches.value_of("haystack").unwrap();
     let term = matches.value_of("needle").unwrap();
-    let buff_size = matches
+    let buf_size = matches
         .value_of("buffersize")
         .unwrap_or("5000")
         .parse::<usize>()
@@ -30,9 +30,9 @@ fn main() -> Result<(), io::Error> {
         .unwrap();
 
     let res = if matches.is_present("exp") {
-        run_exp(dir, term, pool_size, trim_size)
+        run_exp(dir, term, pool_size, buf_size)
     } else {
-        run_stable(dir, term, pool_size, trim_size)
+        run_stable(dir, term, pool_size, buf_size)
     };
 
     if matches.is_present("benchmark") {
@@ -49,19 +49,19 @@ fn main() -> Result<(), io::Error> {
     return Ok(());
 }
 
-fn run_stable(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<usize, io::Error> {
+fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
     let haystack = Manager::new(term, pool_size)?;
-    haystack.spawn(trim_size);
+    haystack.spawn(buf_size);
 
     core::scan(dir.to_owned(), &haystack);
 
     Ok(haystack.stop())
 }
 
-fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<usize, io::Error> {
+fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
     let haystack = exp::Manager::new(term, pool_size)?;
 
-    haystack.start(trim_size);
+    haystack.start(buf_size);
 
     let dir = dir.to_owned();
     let _ = exp::Scanner{}.run(dir, &haystack);
