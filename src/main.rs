@@ -55,7 +55,7 @@ fn run_stable(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Resu
 
     core::scan(dir.to_owned(), &haystack);
 
-    Ok(haystack.wait())
+    Ok(haystack.stop())
 }
 
 fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<usize, io::Error> {
