@@ -1,153 +1,164 @@
+extern crate atomic_counter;
+extern crate crossbeam;
 extern crate walkdir;
 
+use std::thread;
+use std::sync::Arc;
 use std::fs::File;
 use std::io;
-use std::io::{Error, ErrorKind, Read};
+use std::io::{BufRead, BufReader, Error, ErrorKind, Read, Seek};
+use std::path::Path;
 
+use crossbeam::channel as cc;
 use walkdir::WalkDir;
+use atomic_counter::AtomicCounter;
+use atomic_counter::RelaxedCounter;
 
-#[derive(Debug, Clone)]
 pub struct Manager {
     term: String,
-    pool: Vec<Worker>,
+    pool: usize,
+    tx: cc::Sender<String>,
+    rx: cc::Receiver<String>,
+    done_tx: cc::Sender<bool>,
+    done_rx: cc::Receiver<bool>,
+    found: Arc<RelaxedCounter>,
 }
 
 impl Manager {
-    pub fn new(term: &str, pool_size: usize) -> Result<Manager, Error> {
+    pub fn new(term: &str, pool: usize) -> Result<Manager, Error> {
         if term.is_empty() {
             return Result::Err(
-                Error::new(ErrorKind::InvalidInput, "empty search term is not allowed")
+                Error::new(ErrorKind::InvalidInput, "search term must not be empty")
             );
         }
-        let mg = Manager {
+        let (tx, rx) = cc::bounded(pool * 2);
+        let (done_tx, done_rx) = cc::bounded(pool);
+        let found = Arc::new(RelaxedCounter::new(0));
+
+        let m = Manager {
             term: term.to_owned(),
-            pool: vec![Worker{}; pool_size],
+            pool,
+            tx,
+            rx,
+            done_tx,
+            done_rx,
+            found,
         };
-        Result::Ok(mg)
+
+        Result::Ok(m)
     }
 
-    fn take_file(&self, name: &str, buf: &[u8]) -> bool {
-        let res = self.pool.last().unwrap().process(buf, &self.term);
-        
-        if res {
-            println!("{}", name);
+    pub fn spawn(&self, buf_size: usize) {
+        for _ in 0..self.pool {
+            
+            let term = self.term.clone();
+            let rx = self.rx.clone();
+            let done_tx = self.done_tx.clone();
+            let found = self.found.clone();
+
+            thread::spawn(move || {
+                let w = Worker {
+                    term,
+                    buf_size
+                };
+                w.recv(rx, done_tx, found);
+            });
         }
-
-        return res;
     }
-}
 
-#[derive(Debug, Copy, Clone)]
-pub struct Scanner {}
+    fn take(&self, file: String) {
+        self.tx.send(file);
+    }
 
-impl Scanner {
-    pub fn run(self, mg: &Manager, dir: &str) -> Result<usize, io::Error> {
-        let mut buf: Vec<u8> = Vec::new();
-        let mut counter: usize = 0;
-
-        for item in WalkDir::new(dir).into_iter().filter_map(|i| i.ok()) {
-            if item.file_type().is_file() {
-                let mut handle = File::open(item.path())?;
-
-                buf.clear();
-                handle.read_to_end(&mut buf)?;
-
-                if mg.take_file(item.path().to_str().unwrap(), &buf) {
-                    counter = counter + 1;
-                }
+    pub fn wait(&self) -> usize {
+        for _ in 0..self.pool {
+            self.tx.send(String::new());
+        }
+        loop {
+            if self.done_rx.len() == self.pool {
+                break;
             }
         }
-        Ok(counter)
+        return self.found.get();
     }
 }
 
-#[derive(Debug, Copy, Clone)]
-struct Worker {}
+pub fn scan(dir: String, mg: &Manager) -> Result<(), io::Error> {
+    
+    let items = WalkDir::new(dir).into_iter().filter_map(|i| {
+        i.ok()
+    });
+
+    for i in items {
+        if i.file_type().is_file() {
+            let path = i.path().display().to_string();
+            mg.take(path);
+        }
+    }
+    Result::Ok(())
+}
+
+struct Worker {
+    term: String,
+    buf_size: usize,
+}
 
 impl Worker {
-    fn process(self, buf: &[u8], term: &str) -> bool {
-        let term = term.as_bytes();
+    fn recv(&self, rx: cc::Receiver<String>, done_tx: cc::Sender<bool>, found: Arc<RelaxedCounter>) {
+        loop {
+            if let Ok(file) = rx.recv() {
+                if file.is_empty() {
+                    break;
+                }
+                let mut handle = match File::open(Path::new(&file)) {
+                    Ok(f) => f,
+                    Err(e) => {
+                        // ToDo: Log error
+                        continue;
+                    }
+                };
+                let mut reader = BufReader::new(handle);
+                let was_found = self.process(&mut reader);
 
-        'bytes: for (i, _) in buf.iter().enumerate() {
-            if buf.len() - i < term.len() {
-                return false;
-            }
-            for (j, term_b) in term.iter().enumerate() {
-                if buf[i + j] != *term_b {
-                    continue 'bytes;
+                if was_found {
+                    // ToDo: Log success
+                    found.inc();
                 }
-                if j == term.len() - 1 {
-                    return true;
-                }
+            } else {
+                break;
             }
         }
-        return false;
+        done_tx.send(true).unwrap_or_else(|v| {
+            // ToDo: Log error
+        });
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use std::error::Error;
-    use std::io::ErrorKind;
+    fn process(&self, reader: &mut Read) -> bool {
+        let mut buf = vec![0; self.buf_size];
+        let mut cursor = 0;
+        let term = self.term.as_bytes();
 
-    use crate::core::{Manager, Worker};
+        loop {
+            if let Ok(size) = reader.read(&mut buf) {
+                for i in 0..size {
+                    if buf[i] == term[cursor] {
+                        cursor = cursor + 1;
+                    } else if cursor > 0 {
+                        if buf[i] == term[0] {
+                            cursor = 1;
+                        } else {
+                            cursor = 0;
+                        }
+                    }
 
-    #[test]
-    fn empty_search_term() {
-        let m = Manager::new("", 5);
-        match m {
-            Ok(_) => panic!("this call should return an error"),
-            Err(err) => assert!(err.kind() == ErrorKind::InvalidInput && err.description() == "empty search term is not allowed",
-                "wrong error returned: {}", err)
+                    if cursor == term.len() {
+                        return true;
+                    }
+                }
+            } else {
+                break;
+            }
         }
-    }
-
-    #[test]
-    fn empty_buffer() {
-        let w = Worker {};
-        let buf = vec![];
-        assert!(!w.process(&buf, "text"),
-            "empty buffer should return false");
-    }
-
-    #[test]
-    fn find_at_end() {
-        let w = Worker {};
-        let buf = "0123456789".as_bytes();
-        assert!(w.process(&buf, "789"),
-            "finding the search term at the end should return true");
-    }
-
-    /// This test should NOT fail (e. g. index out of bounds)
-    #[test]
-    fn find_only_half_at_end() {
-        let w = Worker {};
-        let buf = "0123456789".as_bytes();
-        assert!(!w.process(&buf, "8910"),
-            "finding the pattern only half at the end should return false");
-    }
-
-    #[test]
-    fn find_at_beginning() {
-        let w = Worker {};
-        let buf = "0123456789".as_bytes();
-        assert!(w.process(&buf, "012"),
-            "finding the pattern at the beginning should return true");
-    }
-
-    #[test]
-    fn find_at_center() {
-        let w = Worker {};
-        let buf = "0123456789".as_bytes();
-        assert!(w.process(&buf, "456"),
-            "finding the pattern at the center should return true");
-    }
-
-    #[test]
-    fn finding_nothing() {
-        let w = Worker {};
-        let buf = "0123456789".as_bytes();
-        assert!(!w.process(&buf, "asdf"),
-            "finding nothing should return false");
+        false
     }
 }

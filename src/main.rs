@@ -5,7 +5,6 @@ use std::time::Instant;
 use crossbeam::channel as cc;
 
 use crate::core::Manager;
-use crate::core::Scanner;
 
 mod core;
 mod app;
@@ -33,7 +32,7 @@ fn main() -> Result<(), io::Error> {
     let res = if matches.is_present("exp") {
         run_exp(dir, term, pool_size, trim_size)
     } else {
-        run_stable(dir, term)
+        run_stable(dir, term, pool_size, trim_size)
     };
 
     if matches.is_present("benchmark") {
@@ -50,11 +49,13 @@ fn main() -> Result<(), io::Error> {
     return Ok(());
 }
 
-fn run_stable(dir: &str, term: &str) -> Result<usize, io::Error> {
-    let haystack = Manager::new(term, 5)?;
-    let res = Scanner {}.run(&haystack, dir);
+fn run_stable(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<usize, io::Error> {
+    let haystack = Manager::new(term, pool_size)?;
+    haystack.spawn(trim_size);
 
-    return res;
+    core::scan(dir.to_owned(), &haystack);
+
+    Ok(haystack.wait())
 }
 
 fn run_exp(dir: &str, term: &str, pool_size: usize, trim_size: usize) -> Result<usize, io::Error> {
