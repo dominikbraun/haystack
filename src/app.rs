@@ -52,7 +52,7 @@ fn flag_exp() -> Arg<'static, 'static> {
 
 fn flag_benchmark() -> Arg<'static, 'static> {
     Arg::with_name("benchmark")
-        .short("b")
+        .short("B")
         .long("benchmark")
         .help("Benchmark the search")
         .takes_value(false)
@@ -62,17 +62,17 @@ fn flag_benchmark() -> Arg<'static, 'static> {
 fn arg_ps() -> Arg<'static, 'static> {
     Arg::with_name("ps")
         .short("s")
-        .long("ps")
+        .long("poolsize")
         .help("The worker pool size, i. e. number of threads.")
         .takes_value(true)
         .required(false)
 }
 
 fn arg_ts() -> Arg<'static, 'static> {
-    Arg::with_name("trimsize")
-        .short("t")
-        .long("trimsize")
-        .help("If the worker buffer is bigger than this size, it will be trimmed to the current content.")
+    Arg::with_name("buffersize")
+        .short("b")
+        .long("buffersize")
+        .help("Used buffersize for reading from the buffered reader.")
         .takes_value(true)
         .required(false)
 }

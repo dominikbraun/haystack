@@ -17,9 +17,9 @@ fn main() -> Result<(), io::Error> {
 
     let dir = matches.value_of("haystack").unwrap();
     let term = matches.value_of("needle").unwrap();
-    let trim_size = matches
-        .value_of("trimsize")
-        .unwrap_or("500000000")
+    let buff_size = matches
+        .value_of("buffersize")
+        .unwrap_or("5000")
         .parse::<usize>()
         .unwrap();
 
