@@ -125,7 +125,7 @@ impl Worker {
 
                     let mut reader = BufReader::new(handle);
 
-                    let positive = self.process(&mut reader, &self.term);
+                    let positive = self.process(&mut reader);
 
                     if positive {
                         println!("Found in file {}", job);
@@ -140,10 +140,10 @@ impl Worker {
         finished.send(true).unwrap();
     }
 
-    fn process(&self, reader: &mut BufReader<File>, term: &str) -> bool {
+    fn process(&self, reader: &mut Read) -> bool {
         let mut buf = vec![0; self.buf_size];
         let mut term_cursor = 0;
-        let term = term.as_bytes();
+        let term = self.term.as_bytes();
 
         loop {
             match reader.read(&mut buf) {
@@ -175,5 +175,86 @@ impl Worker {
         }
 
         true
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+    use std::io::{BufReader, Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
+    use std::sync::Arc;
+
+    use crate::exp::{Manager, Worker};
+
+    fn setup_fake_file(data: &str) -> Cursor<Vec<u8>> {
+        let mut fake_file = Cursor::new(Vec::new());
+
+        // Write into the "file" and seek to the beginning
+        fake_file.write_all(data.as_bytes()).unwrap();
+        fake_file.seek(SeekFrom::Start(0)).unwrap();
+
+        return fake_file
+    }
+
+    fn setup_test_worker(term: &str, buf_size: usize) -> Worker {
+        return Worker {
+            term: String::from(term),
+            counter: Arc::default(),
+            buf_size,
+        };
+    }
+
+    #[test]
+    fn empty_search_term() {
+        let m = Manager::new("", 5);
+        match m {
+            Ok(_) => panic!("this call should return an error"),
+            Err(err) => assert!(err.kind() == ErrorKind::InvalidInput && err.description() == "empty search term is not allowed",
+                                "wrong error returned: {}", err)
+        }
+    }
+
+    #[test]
+    fn empty_buffer() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert!(!setup_test_worker("789", 0).process(&mut reader),
+                "empty buffer should return false");
+    }
+
+    #[test]
+    fn find_at_end() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert!(setup_test_worker("789", 5).process(&mut reader),
+                "finding the search term at the end should return true");
+    }
+
+    /// This test should NOT fail (e. g. index out of bounds)
+    #[test]
+    fn find_only_half_at_end() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert!(!setup_test_worker("8910", 5).process(&mut reader),
+                "finding the pattern only half at the end should return false");
+    }
+
+    #[test]
+    fn find_at_beginning() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert!(setup_test_worker("012", 5).process(&mut reader),
+                "finding the pattern at the beginning should return true");
+    }
+
+    #[test]
+    fn find_at_center() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert!(setup_test_worker("34567", 5).process(&mut reader),
+                "finding the pattern at the center should return true");
+    }
+
+    #[test]
+    fn finding_nothing() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert!(!setup_test_worker("asdf", 5).process(&mut reader),
+                "finding nothing should return false");
     }
 }
