@@ -3,8 +3,6 @@ extern crate slog_async;
 extern crate slog_term;
 
 use std::io;
-use std::process::exit;
-use std::thread::LocalKey;
 use std::time::Instant;
 
 use clap::Error;
@@ -60,13 +58,14 @@ fn main() -> Result<(), io::Error> {
     };
 
     if matches.is_present("benchmark") {
-        println!("\nElapsed time:\n{} µs", now.elapsed().as_micros());
-        println!("{} ms", now.elapsed().as_millis());
-        println!("{} s", now.elapsed().as_secs());
+        info!(log, "\nElapsed time:\n{} µs\n{} ms\n{} s",
+              now.elapsed().as_micros(),
+              now.elapsed().as_millis(),
+              now.elapsed().as_secs());
     };
 
     match res {
-        Ok(count) => println!("found {} times", res.unwrap()),
+        Ok(count) => info!(log, "found {} times", res.unwrap()),
         Err(err) => {
             error!(log, "{}", err);
             return Err(err)
