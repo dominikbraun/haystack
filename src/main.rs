@@ -4,6 +4,7 @@ extern crate slog_term;
 
 use std::io;
 use std::process::exit;
+use std::thread::LocalKey;
 use std::time::Instant;
 
 use clap::Error;
@@ -53,9 +54,9 @@ fn main() -> Result<(), io::Error> {
     let now = Instant::now();
 
     let res = if matches.is_present("exp") {
-        run_exp(dir, term, pool_size, buf_size)
+        run_exp(&log, dir, term, pool_size, buf_size)
     } else {
-        run_stable(dir, term, pool_size, buf_size)
+        run_stable(&log, dir, term, pool_size, buf_size)
     };
 
     if matches.is_present("benchmark") {
@@ -66,14 +67,17 @@ fn main() -> Result<(), io::Error> {
 
     match res {
         Ok(count) => println!("found {} times", res.unwrap()),
-        Err(err) => return Err(err),
+        Err(err) => {
+            error!(log, "{}", err);
+            return Err(err)
+        },
     };
 
     return Ok(());
 }
 
-fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
-    let haystack = Manager::new(term, pool_size)?;
+fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
+    let haystack = Manager::new(log.new(o!("manager" => 1)), term, pool_size)?;
     haystack.spawn(buf_size);
 
     core::scan(dir.to_owned(), &haystack);
@@ -81,7 +85,7 @@ fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Resul
     Ok(haystack.stop())
 }
 
-fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
+fn run_exp(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
     let haystack = exp::Manager::new(term, pool_size)?;
 
     haystack.start(buf_size);

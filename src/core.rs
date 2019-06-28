@@ -12,9 +12,11 @@ use std::thread;
 use atomic_counter::AtomicCounter;
 use atomic_counter::RelaxedCounter;
 use crossbeam::channel as cc;
+use slog::{info, Logger};
 use walkdir::WalkDir;
 
 pub struct Manager {
+    log: Logger,
     term: String,
     pool_size: usize,
     tx: cc::Sender<String>,
@@ -25,7 +27,9 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(term: &str, pool: usize) -> Result<Manager, Error> {
+    pub fn new(log: Logger, term: &str, pool: usize) -> Result<Manager, Error> {
+        info!(log, "setup manager");
+
         if term.is_empty() {
             return Result::Err(
                 Error::new(ErrorKind::InvalidInput, "search term must not be empty")
@@ -36,6 +40,7 @@ impl Manager {
         let found = Arc::new(RelaxedCounter::new(0));
 
         let m = Manager {
+            log,
             term: term.to_owned(),
             pool_size: pool,
             tx,
