@@ -12,7 +12,7 @@ use std::thread;
 use atomic_counter::AtomicCounter;
 use atomic_counter::RelaxedCounter;
 use crossbeam::channel as cc;
-use slog::{info, Logger};
+use slog::{error, info, Logger, o};
 use walkdir::WalkDir;
 
 pub struct Manager {
@@ -54,14 +54,16 @@ impl Manager {
     }
 
     pub fn spawn(&self, buf_size: usize) {
-        for _ in 0..self.pool_size {
+        for i in 0..self.pool_size {
             let term = self.term.clone();
             let rx = self.rx.clone();
             let done_tx = self.done_tx.clone();
             let found = self.found.clone();
+            let log = self.log.new(o!("worker" => i));
 
             thread::spawn(move || {
                 let w = Worker {
+                    log,
                     term,
                     buf_size
                 };
@@ -104,12 +106,14 @@ pub fn scan(dir: String, mg: &Manager) -> Result<(), io::Error> {
 }
 
 struct Worker {
+    log: Logger,
     term: String,
     buf_size: usize,
 }
 
 impl Worker {
     fn recv(&self, rx: cc::Receiver<String>, done_tx: cc::Sender<bool>, found: Arc<RelaxedCounter>) {
+        info!(self.log, "starting worker");
         loop {
             if let Ok(file) = rx.recv() {
                 // empty string is signal for closing worker
@@ -118,8 +122,8 @@ impl Worker {
                 }
                 let mut handle = match File::open(Path::new(&file)) {
                     Ok(f) => f,
-                    Err(e) => {
-                        // ToDo: Log error
+                    Err(err) => {
+                        error!(self.log, "{}", err);
                         continue;
                     }
                 };
@@ -127,13 +131,14 @@ impl Worker {
                 let was_found = self.process(&mut reader);
 
                 if was_found {
-                    // ToDo: Log success
+                    info!(self.log, "found '{}' in file {}", self.term, file);
                     found.inc();
                 }
             } else {
                 break;
             }
         }
+        info!(self.log, "stopping worker");
         done_tx.send(true).unwrap_or_else(|v| {
             // ToDo: Log error
         });
