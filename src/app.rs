@@ -60,7 +60,7 @@ fn flag_benchmark() -> Arg<'static, 'static> {
 }
 
 fn arg_ps() -> Arg<'static, 'static> {
-    Arg::with_name("ps")
+    Arg::with_name("poolsize")
         .short("s")
         .long("poolsize")
         .help("The worker pool size, i. e. number of threads.")

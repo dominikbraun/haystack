@@ -4,7 +4,7 @@ extern crate walkdir;
 
 use std::fs::File;
 use std::io;
-use std::io::{BufReader, Error, ErrorKind, Read, Seek};
+use std::io::{BufReader, Error, ErrorKind, Read};
 use std::path::Path;
 use std::sync::Arc;
 use std::thread;
