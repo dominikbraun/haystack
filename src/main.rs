@@ -53,6 +53,8 @@ fn main() -> Result<(), io::Error> {
         .unwrap_or_else(|err| {
             error_panic!(log, err);
         });
+    
+    let with_snippets = matches.is_present("snippets");
 
     // start measuring execution time
     let now = Instant::now();
@@ -60,7 +62,7 @@ fn main() -> Result<(), io::Error> {
     let res = if matches.is_present("exp") {
         run_exp(&log, dir, term, pool_size, buf_size)
     } else {
-        run_stable(&log, dir, term, pool_size, buf_size)
+        run_stable(&log, dir, term, pool_size, buf_size, with_snippets)
     };
 
     if matches.is_present("benchmark") {
@@ -81,8 +83,8 @@ fn main() -> Result<(), io::Error> {
     return Ok(());
 }
 
-fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
-    let haystack = Manager::new(log.new(o!("manager" => 1)), term, pool_size)?;
+fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize, with_snippets: bool) -> Result<usize, io::Error> {
+    let haystack = Manager::new(log.new(o!("manager" => 1)), term, pool_size, with_snippets)?;
     haystack.spawn(buf_size);
 
     core::scan(dir.to_owned(), &haystack);
@@ -92,7 +94,7 @@ fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: u
 
 fn run_exp(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
     unimplemented!();
-    Ok(())
+    Ok(1)
 }
 
 fn logger() -> Logger {

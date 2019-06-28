@@ -54,14 +54,23 @@ fn flag_benchmark() -> Arg<'static, 'static> {
     Arg::with_name("benchmark")
         .short("B")
         .long("benchmark")
-        .help("Benchmark the search")
+        .help("Displays benchmarking data.")
+        .takes_value(false)
+        .required(false)
+}
+
+fn flag_snippets() -> Arg<'static, 'static> {
+    Arg::with_name("snippets")
+        .short("s")
+        .long("snippets")
+        .help("Prints a text snippet containing the found search term.")
         .takes_value(false)
         .required(false)
 }
 
 fn arg_ps() -> Arg<'static, 'static> {
     Arg::with_name("poolsize")
-        .short("s")
+        .short("p")
         .long("poolsize")
         .help("The worker pool size, i. e. number of threads.")
         .takes_value(true)
@@ -72,7 +81,7 @@ fn arg_bs() -> Arg<'static, 'static> {
     Arg::with_name("buffersize")
         .short("b")
         .long("buffersize")
-        .help("Used buffersize for reading from the buffered reader.")
+        .help("Used buffer size for reading from the buffered reader.")
         .takes_value(true)
         .required(false)
 }

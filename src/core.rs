@@ -24,10 +24,11 @@ pub struct Manager {
     done_tx: cc::Sender<bool>,
     done_rx: cc::Receiver<bool>,
     found: Arc<RelaxedCounter>,
+    with_snippets: bool,
 }
 
 impl Manager {
-    pub fn new(log: Logger, term: &str, pool: usize) -> Result<Manager, Error> {
+    pub fn new(log: Logger, term: &str, pool: usize, with_snippets: bool) -> Result<Manager, Error> {
         info!(log, "setup manager");
 
         if term.is_empty() {
@@ -48,6 +49,7 @@ impl Manager {
             done_tx,
             done_rx,
             found,
+            with_snippets,
         };
 
         Result::Ok(m)
@@ -60,12 +62,14 @@ impl Manager {
             let done_tx = self.done_tx.clone();
             let found = self.found.clone();
             let log = self.log.new(o!("worker" => i));
+            let with_snippets = self.with_snippets;
 
             thread::spawn(move || {
                 let w = Worker {
                     log,
                     term,
-                    buf_size
+                    buf_size,
+                    with_snippets,
                 };
                 w.recv(rx, done_tx, found);
             });
@@ -109,6 +113,7 @@ struct Worker {
     log: Logger,
     term: String,
     buf_size: usize,
+    with_snippets: bool,
 }
 
 impl Worker {
