@@ -128,11 +128,11 @@ impl Worker {
                     }
                 };
                 let mut reader = BufReader::new(handle);
-                let was_found = self.process(&mut reader);
+                let count = self.process(&mut reader);
 
-                if was_found {
-                    info!(self.log, "found '{}' in file {}", self.term, file);
-                    found.inc();
+                if count > 0 {
+                    info!(self.log, "found '{}' {} times in file {}", self.term, count, file);
+                    found.add(count);
                 }
             } else {
                 break;
@@ -144,10 +144,11 @@ impl Worker {
         });
     }
 
-    fn process(&self, reader: &mut Read) -> bool {
+    fn process(&self, reader: &mut Read) -> usize {
         let mut buf = vec![0; self.buf_size];
         let mut cursor = 0;
         let term = self.term.as_bytes();
+        let mut counter = 0;
 
         loop {
             if let Ok(size) = reader.read(&mut buf) {
@@ -167,14 +168,15 @@ impl Worker {
                     }
 
                     if cursor == term.len() {
-                        return true;
+                        counter = counter + 1;
+                        cursor = 0;
                     }
                 }
             } else {
                 break;
             }
         }
-        false
+        counter
     }
 }
 

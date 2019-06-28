@@ -31,7 +31,7 @@ fn main() -> Result<(), io::Error> {
     let matches = app::build().get_matches();
 
     let dir = matches.value_of("haystack").unwrap_or_else(|| {
-            error_panic!(log, Error::with_description("'haystack' parameter needed", ErrorKind::ArgumentNotFound));
+        error_panic!(log, Error::with_description("'haystack' parameter needed", ErrorKind::ArgumentNotFound));
     });
 
     let term = matches.value_of("needle").unwrap_or_else(|| {
@@ -92,7 +92,7 @@ fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: u
 
 fn run_exp(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
     unimplemented!();
-    Ok(())
+    Ok((0))
 }
 
 fn logger() -> Logger {
