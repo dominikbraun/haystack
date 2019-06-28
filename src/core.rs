@@ -186,6 +186,8 @@ mod tests {
     use std::io::{BufReader, Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
     use std::sync::Arc;
 
+    use slog::{Drain, Logger, o};
+
     use crate::core::{Manager, Worker};
 
     fn setup_fake_file(data: &str) -> Cursor<Vec<u8>> {
@@ -198,8 +200,19 @@ mod tests {
         return fake_file
     }
 
+    fn logger() -> Logger {
+        let decorator = slog_term::PlainDecorator::new(std::io::stdout());
+        let drain = slog_term::CompactFormat::new(decorator).build().fuse();
+        let drain = slog_async::Async::new(drain).build().fuse();
+        return Logger::root(
+            drain,
+            o!(),
+        );
+    }
+
     fn setup_test_worker(term: &str, buf_size: usize) -> Worker {
         return Worker {
+            log: logger(),
             term: String::from(term),
             buf_size,
         };
@@ -207,7 +220,7 @@ mod tests {
 
     #[test]
     fn empty_search_term() {
-        let m = Manager::new("", 5);
+        let m = Manager::new(logger(), "", 5);
         match m {
             Ok(_) => panic!("this call should return an error"),
             Err(err) => assert!(err.kind() == ErrorKind::InvalidInput && err.description() == "search term must not be empty",
@@ -218,43 +231,43 @@ mod tests {
     #[test]
     fn empty_buffer() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert!(!setup_test_worker("789", 0).process(&mut reader),
-                "empty buffer should return false");
+        assert_eq!(0, setup_test_worker("789", 0).process(&mut reader), "empty buffer should return false");
     }
 
     #[test]
     fn find_at_end() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert!(setup_test_worker("789", 5).process(&mut reader),
-                "finding the search term at the end should return true");
+        assert_eq!(1, setup_test_worker("789", 5).process(&mut reader), "finding the search term at the end should return true");
     }
 
     /// This test should NOT fail (e. g. index out of bounds)
     #[test]
     fn find_only_half_at_end() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert!(!setup_test_worker("8910", 5).process(&mut reader),
-                "finding the pattern only half at the end should return false");
+        assert_eq!(0, setup_test_worker("8910", 5).process(&mut reader), "finding the pattern only half at the end should return false");
     }
 
     #[test]
     fn find_at_beginning() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert!(setup_test_worker("012", 5).process(&mut reader),
-                "finding the pattern at the beginning should return true");
+        assert_eq!(1, setup_test_worker("012", 5).process(&mut reader), "finding the pattern at the beginning should return true");
     }
 
     #[test]
     fn find_at_center() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert!(setup_test_worker("34567", 5).process(&mut reader),
-                "finding the pattern at the center should return true");
+        assert_eq!(1, setup_test_worker("34567", 5).process(&mut reader), "finding the pattern at the center should return true");
     }
 
     #[test]
     fn finding_nothing() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert!(!setup_test_worker("asdf", 5).process(&mut reader),
-                "finding nothing should return false");
+        assert_eq!(0, setup_test_worker("asdf", 5).process(&mut reader), "finding nothing should return false");
+    }
+
+    #[test]
+    fn find_several_times() {
+        let mut reader = BufReader::new(setup_fake_file("abc01234abc56789abcjab"));
+        assert_eq!(3, setup_test_worker("abc", 10).process(&mut reader), "the pattern should exist 3 times in the file");
     }
 }
