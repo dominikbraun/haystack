@@ -30,23 +30,29 @@ fn main() -> Result<(), io::Error> {
 
     let matches = app::build().get_matches();
 
-    let dir = matches.value_of("haystack")
-        .unwrap_or_else(|| { error_panic!(log, Error::with_description("'haystack' parameter needed", ErrorKind::ArgumentNotFound)); });
+    let dir = matches.value_of("haystack").unwrap_or_else(|| {
+            error_panic!(log, Error::with_description("'haystack' parameter needed", ErrorKind::ArgumentNotFound));
+    });
 
-    let term = matches.value_of("needle")
-        .unwrap_or_else(|| { error_panic!(log, Error::with_description("'needle' parameter needed", ErrorKind::ArgumentNotFound)); });
+    let term = matches.value_of("needle").unwrap_or_else(|| {
+        error_panic!(log, Error::with_description("'needle' parameter needed", ErrorKind::ArgumentNotFound));
+    });
 
     let buf_size = matches
         .value_of("buffersize")
         .unwrap_or("5000")
         .parse::<usize>()
-        .unwrap_or_else(|err| { error_panic!(log, err); });
+        .unwrap_or_else(|err| {
+            error_panic!(log, err);
+        });
 
     let pool_size = matches
         .value_of("poolsize")
         .unwrap_or("4")
         .parse::<usize>()
-        .unwrap_or_else(|err| { error_panic!(log, err); });
+        .unwrap_or_else(|err| {
+            error_panic!(log, err);
+        });
 
     // start measuring execution time
     let now = Instant::now();
@@ -85,14 +91,7 @@ fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: u
 }
 
 fn run_exp(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
-    let haystack = exp::Manager::new(term, pool_size)?;
-
-    haystack.start(buf_size);
-
-    let dir = dir.to_owned();
-    let _ = exp::Scanner{}.run(dir, &haystack);
-
-    Ok(haystack.stop())
+    Ok(())
 }
 
 fn logger() -> Logger {
