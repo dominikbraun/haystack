@@ -65,7 +65,7 @@ fn main() -> Result<(), io::Error> {
     };
 
     match res {
-        Ok(count) => info!(log, "found {} times", res.unwrap()),
+        Ok(count) => info!(log, "found {} times", count),
         Err(err) => {
             error!(log, "{}", err);
             return Err(err)

@@ -120,7 +120,7 @@ impl Worker {
                 if file.is_empty() {
                     break;
                 }
-                let mut handle = match File::open(Path::new(&file)) {
+                let handle = match File::open(Path::new(&file)) {
                     Ok(f) => f,
                     Err(err) => {
                         error!(self.log, "{}", err);
@@ -139,8 +139,8 @@ impl Worker {
             }
         }
         info!(self.log, "stopping worker");
-        done_tx.send(true).unwrap_or_else(|v| {
-            // ToDo: Log error
+        done_tx.send(true).unwrap_or_else(|err| {
+            error!(self.log, "{}", err);
         });
     }
 
