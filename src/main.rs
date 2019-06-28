@@ -31,7 +31,7 @@ fn main() -> Result<(), io::Error> {
     let matches = app::build().get_matches();
 
     let dir = matches.value_of("haystack").unwrap_or_else(|| {
-            error_panic!(log, Error::with_description("'haystack' parameter needed", ErrorKind::ArgumentNotFound));
+        error_panic!(log, Error::with_description("'haystack' parameter needed", ErrorKind::ArgumentNotFound));
     });
 
     let term = matches.value_of("needle").unwrap_or_else(|| {
