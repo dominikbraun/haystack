@@ -91,6 +91,7 @@ fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: u
 }
 
 fn run_exp(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
+    unimplemented!();
     Ok(())
 }
 

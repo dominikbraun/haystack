@@ -10,7 +10,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(flag_exp())
         .arg(flag_benchmark())
         .arg(arg_ps())
-        .arg(arg_ts())
+        .arg(arg_bs())
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
@@ -68,7 +68,7 @@ fn arg_ps() -> Arg<'static, 'static> {
         .required(false)
 }
 
-fn arg_ts() -> Arg<'static, 'static> {
+fn arg_bs() -> Arg<'static, 'static> {
     Arg::with_name("buffersize")
         .short("b")
         .long("buffersize")
