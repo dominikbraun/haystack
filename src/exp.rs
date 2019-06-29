@@ -27,15 +27,15 @@ impl Manager {
     }
 
     pub fn spawn(&self) {
-        for _ in 0..self.pool_size {
+        for i in 0..self.pool_size {
             let stealer = self.queue.stealer();
             let term = self.term.clone();
             let wg = self.wg.clone();
-
+            
             thread::spawn(move || {
                 loop {
                     if let Steal::Success(f) = stealer.steal() {
-                        if f.is_empty() { break; }
+                        if f.is_empty() { println!("BREAK"); break; }
 
                         let handle = match File::open(Path::new(&f)) {
                             Ok(f) => f,
@@ -60,10 +60,11 @@ impl Manager {
         self.queue.push(file);
     }
     
-    pub fn stop(&self) {
+    pub fn stop(self) {
         for _ in 0..self.pool_size {
             self.queue.push(String::new());
         }
+        self.wg.wait();
     }
 }
 
