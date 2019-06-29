@@ -40,7 +40,7 @@ fn main() -> Result<(), io::Error> {
 
     let buf_size = matches
         .value_of("buffersize")
-        .unwrap_or("5000")
+        .unwrap_or("8000")
         .parse::<usize>()
         .unwrap_or_else(|err| {
             error_panic!(log, err);
