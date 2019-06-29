@@ -93,7 +93,12 @@ fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: u
 }
 
 fn run_exp(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
-    unimplemented!();
+    let haystack = exp::Manager::new(term, pool_size);
+    haystack.spawn();
+    
+    exp::scan(dir, &haystack);
+    
+    haystack.stop();
     Ok(1)
 }
 
