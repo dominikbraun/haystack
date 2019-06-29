@@ -1,8 +1,10 @@
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, Error, Read};
-use std::path::Path;
 use std::iter;
+use std::path::Path;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU16, Ordering};
 use std::thread;
 
 use crossbeam::deque::{Injector, Steal, Stealer, Worker};
@@ -14,6 +16,7 @@ pub struct Manager {
     term: String,
     pool_size: usize,
     wg: WaitGroup,
+    total: Arc<AtomicU16>,
 }
 
 impl Manager {
@@ -23,6 +26,7 @@ impl Manager {
             term: term.to_owned(),
             pool_size,
             wg: WaitGroup::new(),
+            total: Arc::new(AtomicU16::new(0)),
         }
     }
 
@@ -31,11 +35,12 @@ impl Manager {
             let stealer = self.queue.stealer();
             let term = self.term.clone();
             let wg = self.wg.clone();
+            let total = Arc::clone(&self.total);
             
             thread::spawn(move || {
                 loop {
                     if let Steal::Success(f) = stealer.steal() {
-                        if f.is_empty() { println!("BREAK"); break; }
+                        if f.is_empty() { break; }
 
                         let handle = match File::open(Path::new(&f)) {
                             Ok(f) => f,
@@ -47,6 +52,9 @@ impl Manager {
                         let occurences = process(&term, handle);
 
                         if occurences > 0 {
+                            let mut val = total.load(Ordering::Relaxed);
+                            val += 1;
+                            total.store(val, Ordering::Relaxed);
                             println!("Found in {}", f);
                         }
                     }
@@ -65,6 +73,7 @@ impl Manager {
             self.queue.push(String::new());
         }
         self.wg.wait();
+        println!("{}", self.total.load(Ordering::Relaxed));
     }
 }
 
