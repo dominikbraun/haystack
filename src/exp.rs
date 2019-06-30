@@ -4,7 +4,7 @@ extern crate walkdir;
 use std::fs;
 use std::io;
 use std::io::{BufReader, Read, Error};
-use std::io::{BufWriter, StdoutLock, Write};
+use std::io::{BufWriter, Stdout, Write};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU16, Ordering};
@@ -15,18 +15,18 @@ use crossbeam::deque::Steal;
 use crossbeam::sync;
 use walkdir::WalkDir;
 
-pub struct Manager<'a> {
+pub struct Manager {
     term: String,
     queue: Arc<Injector<String>>,
     pool_size: usize,
     gate: sync::WaitGroup,
     total: Arc<AtomicU16>,
-    stdout: Arc<Mutex<BufWriter<StdoutLock<'a>>>>,
+    stdout: Arc<Mutex<BufWriter<Stdout>>>,
 }
 
-impl<'a> Manager<'a> {
-    pub fn new(term: &str, pool_size: usize) -> Manager<'a> {
-        let stdout = BufWriter::new(io::stdout().lock());
+impl Manager {
+    pub fn new(term: &str, pool_size: usize) -> Manager {
+        let stdout = BufWriter::new(io::stdout());
 
         Manager {
             term: term.to_owned(),
@@ -63,7 +63,7 @@ impl<'a> Manager<'a> {
                             let mut val = total.load(Ordering::Relaxed);
                             total.store(val + 1, Ordering::Relaxed);
 
-                            let inner = stdout.lock().unwrap();
+                            let mut inner = stdout.lock().unwrap();
                             inner.write_all(b"Hey!");
                         }
                     }
