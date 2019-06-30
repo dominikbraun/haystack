@@ -62,7 +62,7 @@ fn main() -> Result<(), io::Error> {
     let res = if matches.is_present("exp") {
         run_exp(dir, term, pool_size, buf_size)
     } else {
-        run_stable(&log, dir, term, pool_size, buf_size, with_snippets)
+        run_stable(dir, term, pool_size, buf_size)
     };
 
     if matches.is_present("benchmark") {
@@ -83,22 +83,22 @@ fn main() -> Result<(), io::Error> {
     return Ok(());
 }
 
-fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize, with_snippets: bool) -> Result<usize, io::Error> {
-    let haystack = Manager::new(log.new(o!("manager" => 1)), term, pool_size, with_snippets)?;
-    haystack.spawn(buf_size);
-
-    core::scan(dir.to_owned(), &haystack);
-
-    Ok(haystack.stop())
-}
-
-fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
+fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u16, io::Error> {
     let haystack = exp::Manager::new(term, pool_size);
     haystack.spawn();
     
     exp::scan(dir, &haystack);
     
-    Ok(haystack.stop() as usize)
+    Ok(haystack.stop())
+}
+
+fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u16, io::Error> {
+    let haystack = exp::Manager::new(term, pool_size);
+    haystack.spawn();
+    
+    exp::scan(dir, &haystack);
+    
+    Ok(haystack.stop())
 }
 
 fn logger() -> Logger {
