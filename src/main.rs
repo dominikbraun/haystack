@@ -48,7 +48,7 @@ fn main() -> Result<(), io::Error> {
 
     let pool_size = matches
         .value_of("poolsize")
-        .unwrap_or("6")
+        .unwrap_or("8")
         .parse::<usize>()
         .unwrap_or_else(|err| {
             error_panic!(log, err);
