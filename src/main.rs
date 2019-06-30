@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use clap::Error;
 use clap::ErrorKind;
-use slog::{Drain, error, info, Logger, o};
+use slog::{Drain, error, info, o, Logger};
 
 use crate::core::Manager;
 
@@ -48,7 +48,7 @@ fn main() -> Result<(), io::Error> {
 
     let pool_size = matches
         .value_of("poolsize")
-        .unwrap_or("4")
+        .unwrap_or("6")
         .parse::<usize>()
         .unwrap_or_else(|err| {
             error_panic!(log, err);
@@ -60,7 +60,7 @@ fn main() -> Result<(), io::Error> {
     let now = Instant::now();
 
     let res = if matches.is_present("exp") {
-        run_exp(&log, dir, term, pool_size, buf_size)
+        run_exp(dir, term, pool_size, buf_size)
     } else {
         run_stable(&log, dir, term, pool_size, buf_size, with_snippets)
     };
@@ -92,14 +92,13 @@ fn run_stable(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: u
     Ok(haystack.stop())
 }
 
-fn run_exp(log: &Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
+fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<usize, io::Error> {
     let haystack = exp::Manager::new(term, pool_size);
     haystack.spawn();
     
     exp::scan(dir, &haystack);
     
-    haystack.stop();
-    Ok(1)
+    Ok(haystack.stop() as usize)
 }
 
 fn logger() -> Logger {
