@@ -38,11 +38,11 @@ impl Manager {
             let term = self.term.clone();
             let wg = self.wg.clone();
             let total = Arc::clone(&self.total);
-            let q = Arc::clone(&self.queue);
+            let queue = Arc::clone(&self.queue);
             
             thread::spawn(move || {
                 loop {
-                    if let Steal::Success(f) = q.steal() {
+                    if let Steal::Success(f) = queue.steal() {
                         if f.is_empty() { break; }
 
                         let handle = match File::open(Path::new(&f)) {
@@ -57,7 +57,6 @@ impl Manager {
                             let mut val = total.load(Ordering::Relaxed);
                             val += 1;
                             total.store(val, Ordering::Relaxed);
-                            // LOG SUCCESS
                         }
                     }
                 }
@@ -95,7 +94,7 @@ pub fn scan(dir: &str, mg: &Manager) -> Result<(), io::Error> {
     Result::Ok(())
 }
 
-fn process(term: &str, handle: File) -> usize {
+fn process(term: &str, handle: File) -> u16 {
     let mut reader = BufReader::new(handle);
     let mut buf = vec![0; 8000];
 
