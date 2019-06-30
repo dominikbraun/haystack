@@ -3,9 +3,10 @@ extern crate walkdir;
 
 use std::fs;
 use std::io;
-use std::io::{BufReader, Error, Read};
+use std::io::{BufReader, Read, Error};
+use std::io::{BufWriter, StdoutLock, Write};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::thread;
 
@@ -14,22 +15,26 @@ use crossbeam::deque::Steal;
 use crossbeam::sync;
 use walkdir::WalkDir;
 
-pub struct Manager {
+pub struct Manager<'a> {
     term: String,
     queue: Arc<Injector<String>>,
     pool_size: usize,
     gate: sync::WaitGroup,
     total: Arc<AtomicU16>,
+    stdout: Arc<Mutex<BufWriter<StdoutLock<'a>>>>,
 }
 
-impl Manager {
-    pub fn new(term: &str, pool_size: usize) -> Manager {
+impl<'a> Manager<'a> {
+    pub fn new(term: &str, pool_size: usize) -> Manager<'a> {
+        let stdout = BufWriter::new(io::stdout().lock());
+
         Manager {
             term: term.to_owned(),
             queue: Arc::new(Injector::<String>::new()),
             pool_size,
             gate: sync::WaitGroup::new(),
             total: Arc::new(AtomicU16::new(0)),
+            stdout: Arc::new(Mutex::new(stdout)),
         }
     }
 
@@ -39,6 +44,7 @@ impl Manager {
             let queue = Arc::clone(&self.queue);
             let gate = self.gate.clone();
             let total = Arc::clone(&self.total);
+            let stdout = Arc::clone(&self.stdout);
 
             thread::spawn(move || {
                 loop {
@@ -56,6 +62,9 @@ impl Manager {
                         if process(&term, handle) > 0 {
                             let mut val = total.load(Ordering::Relaxed);
                             total.store(val + 1, Ordering::Relaxed);
+
+                            let inner = stdout.lock().unwrap();
+                            inner.write_all(b"Hey!");
                         }
                     }
                 }
