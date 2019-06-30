@@ -1,3 +1,6 @@
+extern crate crossbeam;
+extern crate walkdir;
+
 use std::fs::File;
 use std::io;
 use std::io::{BufReader, Error, Read};
@@ -12,7 +15,7 @@ use crossbeam::sync::WaitGroup;
 use walkdir::WalkDir;
 
 pub struct Manager {
-    queue: Worker<String>,
+    queue: Arc<Injector<String>>,
     term: String,
     pool_size: usize,
     wg: WaitGroup,
@@ -22,7 +25,7 @@ pub struct Manager {
 impl Manager {
     pub fn new(term: &str, pool_size: usize) -> Manager {
         Manager {
-            queue: Worker::<String>::new_fifo(),
+            queue: Arc::new(Injector::<String>::new()),
             term: term.to_owned(),
             pool_size,
             wg: WaitGroup::new(),
@@ -32,20 +35,19 @@ impl Manager {
 
     pub fn spawn(&self) {
         for i in 0..self.pool_size {
-            let stealer = self.queue.stealer();
             let term = self.term.clone();
             let wg = self.wg.clone();
             let total = Arc::clone(&self.total);
+            let q = Arc::clone(&self.queue);
             
             thread::spawn(move || {
                 loop {
-                    if let Steal::Success(f) = stealer.steal() {
+                    if let Steal::Success(f) = q.steal() {
                         if f.is_empty() { break; }
 
                         let handle = match File::open(Path::new(&f)) {
                             Ok(f) => f,
                             Err(err) => {
-                                println!("{}", err);
                                 continue;
                             }
                         };
@@ -55,7 +57,7 @@ impl Manager {
                             let mut val = total.load(Ordering::Relaxed);
                             val += 1;
                             total.store(val, Ordering::Relaxed);
-                            println!("Found in {}", f);
+                            // LOG SUCCESS
                         }
                     }
                 }
@@ -68,12 +70,13 @@ impl Manager {
         self.queue.push(file);
     }
     
-    pub fn stop(self) {
+    pub fn stop(self) -> u16 {
         for _ in 0..self.pool_size {
             self.queue.push(String::new());
         }
         self.wg.wait();
-        println!("{}", self.total.load(Ordering::Relaxed));
+        
+        return self.total.load(Ordering::Relaxed);
     }
 }
 
