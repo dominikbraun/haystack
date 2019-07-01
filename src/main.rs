@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use clap::Error;
 use clap::ErrorKind;
-use slog::{Drain, error, info, o, Logger};
+use slog::{Drain, error, info, Logger, o};
 
 mod core;
 mod app;
@@ -38,7 +38,7 @@ fn main() -> Result<(), io::Error> {
 
     let buf_size = matches
         .value_of("buffersize")
-        .unwrap_or("8000")
+        .unwrap_or("8192")
         .parse::<usize>()
         .unwrap_or_else(|err| {
             error_panic!(log, err);
