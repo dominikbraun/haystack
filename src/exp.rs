@@ -63,8 +63,9 @@ impl Manager {
                             let mut val = total.load(Ordering::Relaxed);
                             total.store(val + 1, Ordering::Relaxed);
 
-                            let mut inner = stdout.lock().unwrap();
-                            inner.write_all(b"Hey!");
+                            let inner = stdout.lock().unwrap();
+                            //let stdout_handle = (*inner).lock();
+                            //stdout_handle.write_all(b"Hey!");
                         }
                     }
                 }
