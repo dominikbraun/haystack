@@ -47,6 +47,7 @@ impl Manager {
             let gate = self.gate.clone();
             let total = Arc::clone(&self.total);
             let mut stdout = BufWriter::new(io::stdout());// = Arc::clone(&self.stdout);
+            let buf_size = self.buf_size.clone();
 
             thread::spawn(move || {
                 loop {
@@ -62,7 +63,7 @@ impl Manager {
                             Err(e) => { continue; },
                         };
 
-                        if process(&term, &mut handle, self.buf_size) > 0 {
+                        if process(&term, &mut handle, buf_size) > 0 {
                             let mut val = total.load(Ordering::Relaxed);
                             total.store(val + 1, Ordering::Relaxed);
 
