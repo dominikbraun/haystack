@@ -105,7 +105,7 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
 
 fn process(term: &str, handle: fs::File) -> u16 {
     let mut reader = BufReader::new(handle);
-    let mut buf = vec![0; 8000];
+    let mut buf = vec![0; 8192];
 
     let mut cursor = 0;
     let mut found: u16 = 0;
