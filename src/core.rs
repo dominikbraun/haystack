@@ -3,7 +3,7 @@ extern crate walkdir;
 
 use std::fs;
 use std::io;
-use std::io::{BufReader, Error, Read};
+use std::io::{BufReader, Read};
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU16, Ordering};
@@ -50,7 +50,7 @@ impl Manager {
                         
                         let handle = match fs::File::open(path) {
                             Ok(h) => h,
-                            Err(e) => { continue; },
+                            Err(_) => { continue; },
                         };
 
                         if process(&term, handle) > 0 {

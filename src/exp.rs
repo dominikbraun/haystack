@@ -3,16 +3,15 @@ extern crate walkdir;
 
 use std::fs;
 use std::io;
-use std::io::{BufReader, Error, Read};
-use std::io::{BufWriter, Stdout, Write};
+use std::io::{BufReader, Read};
+use std::io::{BufWriter, Write};
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::Arc;
+use std::sync::atomic::AtomicU16;
 use std::thread;
 
 use crossbeam::deque::Injector;
 use crossbeam::deque::Steal;
-use crossbeam::sync;
 use walkdir::WalkDir;
 
 pub struct Manager {
@@ -45,7 +44,6 @@ impl Manager {
         for _ in 0..self.pool_size {
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
-            let total = Arc::clone(&self.total);
             let mut stdout = BufWriter::new(io::stdout());
             let buf_size = self.buf_size.clone();
             let done_tx = self.done_tx.clone();
