@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use clap::Error;
 use clap::ErrorKind;
-use slog::{Drain, error, info, o, Logger};
+use slog::{Drain, error, info, Logger, o};
 
 use crate::core::Manager;
 
@@ -40,7 +40,7 @@ fn main() -> Result<(), io::Error> {
 
     let buf_size = matches
         .value_of("buffersize")
-        .unwrap_or("8000")
+        .unwrap_or("8192")
         .parse::<usize>()
         .unwrap_or_else(|err| {
             error_panic!(log, err);
@@ -84,16 +84,16 @@ fn main() -> Result<(), io::Error> {
 }
 
 fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u16, io::Error> {
-    let haystack = exp::Manager::new(term, pool_size);
+    let haystack = core::Manager::new(term, pool_size);
     haystack.spawn();
-    
-    exp::scan(dir, &haystack);
+
+    core::scan(dir, &haystack);
     
     Ok(haystack.stop())
 }
 
 fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u16, io::Error> {
-    let haystack = exp::Manager::new(term, pool_size);
+    let haystack = exp::Manager::new(term, pool_size, buf_size);
     haystack.spawn();
     
     exp::scan(dir, &haystack);
