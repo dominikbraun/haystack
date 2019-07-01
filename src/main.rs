@@ -9,8 +9,6 @@ use clap::Error;
 use clap::ErrorKind;
 use slog::{Drain, error, info, o, Logger};
 
-use crate::core::Manager;
-
 mod core;
 mod app;
 mod exp;
@@ -83,17 +81,17 @@ fn main() -> Result<(), io::Error> {
     return Ok(());
 }
 
-fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u16, io::Error> {
-    let haystack = exp::Manager::new(term, pool_size);
+fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
+    let haystack = core::Manager::new(term, pool_size);
     haystack.spawn();
-    
-    exp::scan(dir, &haystack);
-    
-    Ok(haystack.stop())
+
+    core::scan(dir, &haystack);
+
+    Ok(haystack.stop() as u32)
 }
 
-fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u16, io::Error> {
-    let haystack = exp::Manager::new(term, pool_size);
+fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
+    let haystack = exp::Manager::new(term, pool_size, buf_size);
     haystack.spawn();
     
     exp::scan(dir, &haystack);
