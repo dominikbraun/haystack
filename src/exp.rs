@@ -20,23 +20,24 @@ pub struct Manager {
     queue: Arc<Injector<String>>,
     pool_size: usize,
     buf_size: usize,
-    gate: sync::WaitGroup,
+    done_tx: crossbeam::Sender<u32>,
+    done_rx: crossbeam::Receiver<u32>,
     total: Arc<AtomicU16>,
-    stdout: Arc<Mutex<BufWriter<Stdout>>>,
 }
 
 impl Manager {
     pub fn new(term: &str, pool_size: usize, buf_size: usize) -> Manager {
         let stdout = BufWriter::new(io::stdout());
+        let (done_tx, done_rx) = crossbeam::bounded(pool_size);
 
         Manager {
             term: term.to_owned(),
             queue: Arc::new(Injector::<String>::new()),
             pool_size,
             buf_size,
-            gate: sync::WaitGroup::new(),
+            done_tx,
+            done_rx,
             total: Arc::new(AtomicU16::new(0)),
-            stdout: Arc::new(Mutex::new(stdout)),
         }
     }
 
@@ -44,12 +45,13 @@ impl Manager {
         for _ in 0..self.pool_size {
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
-            let gate = self.gate.clone();
             let total = Arc::clone(&self.total);
-            let mut stdout = BufWriter::new(io::stdout());// = Arc::clone(&self.stdout);
+            let mut stdout = BufWriter::new(io::stdout());
             let buf_size = self.buf_size.clone();
+            let done_tx = self.done_tx.clone();
 
             thread::spawn(move || {
+                let mut found: u32 = 0;
                 loop {
                     if let Steal::Success(f) = queue.steal() {
                         if f.is_empty() {
@@ -63,18 +65,19 @@ impl Manager {
                             Err(e) => { continue; },
                         };
 
-                        if process(&term, &mut handle, buf_size) > 0 {
-                            let mut val = total.load(Ordering::Relaxed);
-                            total.store(val + 1, Ordering::Relaxed);
+                        let val = process(&term, &mut handle, buf_size);
 
-                            //let mut inner = stdout.lock().unwrap();
+                        if val > 0 {
+                            found = found + val as u32;
 
-                            // stdout.write_all(format!("Hey! {}\n", &f).as_bytes());
-
+                            stdout.write_all(format!("found {} times in {}\n", val, &f).as_bytes());
                         }
                     }
                 }
-                drop(gate);
+
+                done_tx.send(found).unwrap_or_else(|err| {
+                    println!("{}", err);
+                });
             });
         }
         true
@@ -84,14 +87,24 @@ impl Manager {
         self.queue.push(file);
     }
 
-    pub fn stop(self) -> u16 {
+    pub fn stop(&self) -> u32 {
+        // send empty string for each worker (empty string is command for closing)
         for _ in 0..self.pool_size {
-            // empty string is the signal for closing
             self.queue.push(String::new());
         }
-        self.gate.wait();
-        
-        return self.total.load(Ordering::Relaxed);
+
+        loop {
+            if self.done_rx.len() == self.pool_size {
+                break;
+            }
+        }
+
+        let mut sum: u32 = 0;
+        for _ in 0..self.pool_size {
+            sum = sum + self.done_rx.recv().unwrap_or(0);
+        }
+
+        return sum;
     }
 }
 
@@ -110,12 +123,12 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
     Result::Ok(())
 }
 
-fn process(term: &str, handle: &mut Read, buf_size: usize) -> u16 {
+fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
     let mut reader = BufReader::new(handle);
     let mut buf = vec![0; buf_size];
 
     let mut cursor = 0;
-    let mut found: u16 = 0;
+    let mut found: u32 = 0;
 
     let term = term.as_bytes();
 
