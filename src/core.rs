@@ -41,12 +41,15 @@ impl Manager {
     pub fn spawn(&self) -> bool {
         for i in 0..self.pool_size {
             let log = self.log.new(o!("worker" => i));
-            debug!(log, "starting");
+            
+            debug!(log, "Spawning worker threads");
+            
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
-            let mut stdout = BufWriter::new(io::stdout());
             let buf_size = self.buf_size.clone();
             let done_tx = self.done_tx.clone();
+
+            let mut stdout = BufWriter::new(io::stdout());
 
             thread::spawn(move || {
                 let mut found: u32 = 0;
