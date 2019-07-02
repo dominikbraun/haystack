@@ -1,6 +1,6 @@
 [package]
 name = "haystack"
-version = "0.1.1"
+version = "0.4.1"
 authors = ["Dominik Braun <braun@sternentstehung.de>", "Johannes Hörmann <aligator@suncraft-server.de>"]
 edition = "2018"
 build = "build.rs"
@@ -9,7 +9,10 @@ build = "build.rs"
 walkdir = "2"
 clap = "2.33.0"
 crossbeam = "0.7"
-atomic-counter = "1.0.1"
 slog = "2.4.1"
 slog-term = "2.4.0"
 slog-async = "2.3.0"
+
+[features]
+release_max_level_info = []
+max_level_off = []

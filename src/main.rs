@@ -2,12 +2,13 @@ extern crate slog;
 extern crate slog_async;
 extern crate slog_term;
 
+use std::fs::{File, OpenOptions};
 use std::io;
 use std::time::Instant;
 
 use clap::Error;
 use clap::ErrorKind;
-use slog::{Drain, error, info, Logger, o};
+use slog::{debug, Drain, error, info, Level, Logger, o};
 
 mod core;
 mod app;
@@ -23,7 +24,7 @@ macro_rules! error_panic {
 
 fn main() -> Result<(), io::Error> {
     let log = logger();
-    info!(log, "Starting Haystack");
+    debug!(log, "Starting Haystack");
 
     let matches = app::build().get_matches();
 
@@ -56,17 +57,17 @@ fn main() -> Result<(), io::Error> {
     // start measuring execution time
     let now = Instant::now();
 
-    let res = run_stable(dir, term, pool_size, buf_size);
+    let res = run(dir, term, pool_size, buf_size);
 
     if matches.is_present("benchmark") {
-        info!(log, "\nElapsed time:\n{} µs\n{} ms\n{} s",
-              now.elapsed().as_micros(),
-              now.elapsed().as_millis(),
-              now.elapsed().as_secs());
+        println!("\nElapsed time:\n{} µs\n{} ms\n{} s",
+                 now.elapsed().as_micros(),
+                 now.elapsed().as_millis(),
+                 now.elapsed().as_secs());
     };
 
     match res {
-        Ok(count) => info!(log, "found {} times", count),
+        Ok(count) => println!("found {} times", count),
         Err(err) => {
             error!(log, "{}", err);
             return Err(err)
@@ -76,7 +77,7 @@ fn main() -> Result<(), io::Error> {
     return Ok(());
 }
 
-fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
+fn run(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
     let haystack = core::Manager::new(term, pool_size, buf_size);
     haystack.spawn();
 
@@ -85,15 +86,41 @@ fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Resul
     Ok(haystack.stop() as u32)
 }
 
+#[cfg(debug_assertions)]
 fn logger() -> Logger {
     let decorator = slog_term::PlainDecorator::new(std::io::stdout());
     // ToDo: Fuse needed? (panics when Drain errors)
     let drain = slog_term::CompactFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
 
-    // Get a root logger that will log into a given drain.
-    //
-    // Note `o!` macro for more natural `OwnedKeyValue` sequence building.
+    let git_hash: String = if !GIT_HASH.is_empty() {
+        format!("-{}", GIT_HASH)
+    } else {
+        String::new()
+    };
+
+    return Logger::root(
+        drain.fuse(),
+        o!("version" => format!("v{}{}", env!("CARGO_PKG_VERSION"), git_hash)),
+    );
+}
+
+
+#[cfg(not(debug_assertions))]
+fn logger() -> Logger {
+    let log_path = "haystack.log";
+    let file = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(log_path)
+        .unwrap();
+
+    let decorator = slog_term::PlainDecorator::new(file);
+    // ToDo: Fuse needed? (panics when Drain errors)
+    let drain = slog_term::CompactFormat::new(decorator).build().fuse();
+    let drain = slog_async::Async::new(drain).build().fuse();
+
     let git_hash: String = if !GIT_HASH.is_empty() {
         format!("-{}", GIT_HASH)
     } else {

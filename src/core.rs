@@ -77,7 +77,7 @@ impl Manager {
                         }
                     }
                 }
-
+                stdout.flush();
                 done_tx.send(found).unwrap_or_else(|err| {
                     println!("{}", err);
                 });
