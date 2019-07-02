@@ -3,8 +3,7 @@ extern crate walkdir;
 
 use std::fs;
 use std::io;
-use std::io::{BufReader, Read};
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Read, Write};
 use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::AtomicU16;
@@ -21,7 +20,6 @@ pub struct Manager {
     buf_size: usize,
     done_tx: crossbeam::Sender<u32>,
     done_rx: crossbeam::Receiver<u32>,
-    total: Arc<AtomicU16>,
 }
 
 impl Manager {
@@ -36,7 +34,6 @@ impl Manager {
             buf_size,
             done_tx,
             done_rx,
-            total: Arc::new(AtomicU16::new(0)),
         }
     }
 
