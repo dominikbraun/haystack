@@ -50,6 +50,7 @@ impl Manager {
 
             thread::spawn(move || {
                 let mut found: u32 = 0;
+                
                 loop {
                     if let Steal::Success(f) = queue.steal() {
                         if f.is_empty() {
@@ -68,7 +69,14 @@ impl Manager {
                         if val > 0 {
                             found = found + val as u32;
 
-                            stdout.write_all(format!("found {} times in {}\n", val, &f).as_bytes());
+                            let mut output = String::with_capacity(2048);
+
+                            output.push_str(&val.to_string());
+                            output.push_str("x in");
+                            output.push_str(&f);
+                            output.push('\n');
+
+                            stdout.write_all(output.as_bytes());
                         }
                     }
                 }
