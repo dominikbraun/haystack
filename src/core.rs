@@ -54,15 +54,16 @@ impl Manager {
                 loop {
                     if let Steal::Success(f) = queue.steal() {
                         if f.is_empty() {
-                            // empty string is the signal for closing
+                            // Leave the loop since an empty string is
+                            // the stop signal for worker queues.
                             break;
                         }
                         let path = Path::new(&f);
 
                         let mut handle = match fs::File::open(path) {
                             Ok(handle) => handle,
-                            Err(err) => {
-                                info!(log, "Error occurred while reading file {}: {}", &f, err);
+                            Err(e) => {
+                                info!(log, "Error occurred while reading file {}: {}", &f, e);
                                 continue;
                             },
                         };
@@ -70,12 +71,12 @@ impl Manager {
                         let val = process(&term, &mut handle, buf_size);
 
                         if val > 0 {
-                            found = found + val as u32;
+                            found += val as u32;
 
                             let mut output = String::with_capacity(2048);
 
                             output.push_str(&val.to_string());
-                            output.push_str("x in");
+                            output.push_str("x in ");
                             output.push_str(&f);
                             output.push('\n');
 
@@ -84,9 +85,11 @@ impl Manager {
                     }
                 }
                 stdout.flush();
+                
                 done_tx.send(found).unwrap_or_else(|err| {
                     println!("{}", err);
                 });
+                
                 debug!(log, "stopped");
             });
         }
@@ -98,7 +101,7 @@ impl Manager {
     }
 
     pub fn stop(&self) -> u32 {
-        // send empty string for each worker (empty string is command for closing)
+        // Send an empty string to each worker queue.
         for _ in 0..self.pool_size {
             self.queue.push(String::new());
         }
@@ -112,7 +115,7 @@ impl Manager {
         let mut sum: u32 = 0;
 
         for _ in 0..self.pool_size {
-            sum = sum + self.done_rx.recv().unwrap_or(0);
+            sum += self.done_rx.recv().unwrap_or(0);
         }
         return sum;
     }

@@ -9,7 +9,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(flag_recursive())
         .arg(flag_benchmark())
         .arg(arg_poolsize())
-        .arg(arg_buffersize())
+        .arg(arg_bufsize())
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
@@ -60,17 +60,15 @@ fn flag_snippets() -> Arg<'static, 'static> {
 
 fn arg_poolsize() -> Arg<'static, 'static> {
     Arg::with_name("poolsize")
-        .short("p")
         .long("poolsize")
         .help("The worker pool size, i. e. number of threads.")
         .takes_value(true)
         .required(false)
 }
 
-fn arg_buffersize() -> Arg<'static, 'static> {
-    Arg::with_name("buffersize")
-        .short("b")
-        .long("buffersize")
+fn arg_bufsize() -> Arg<'static, 'static> {
+    Arg::with_name("bufsize")
+        .long("bufsize")
         .help("Used buffer size for reading from the buffered reader.")
         .takes_value(true)
         .required(false)
