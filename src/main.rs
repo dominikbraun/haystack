@@ -57,7 +57,7 @@ fn main() {
     // start measuring execution time
     let now = Instant::now();
 
-    let res = run(dir, term, pool_size, buf_size);
+    let res = run(log.new(o!("manager" => 1)), dir, term, pool_size, buf_size);
 
     if matches.is_present("benchmark") {
         println!("\nElapsed time:\n{} µs\n{} ms\n{} s",
@@ -74,8 +74,8 @@ fn main() {
     };
 }
 
-fn run(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
-    let haystack = core::Manager::new(term, pool_size, buf_size);
+fn run(log: Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
+    let haystack = core::Manager::new(log, term, pool_size, buf_size);
     haystack.spawn();
 
     core::scan(dir, &haystack);

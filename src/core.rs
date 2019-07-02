@@ -10,9 +10,11 @@ use std::thread;
 
 use crossbeam::deque::Injector;
 use crossbeam::deque::Steal;
+use slog::{debug, error, info, Logger, o};
 use walkdir::WalkDir;
 
 pub struct Manager {
+    log: Logger,
     term: String,
     queue: Arc<Injector<String>>,
     pool_size: usize,
@@ -22,10 +24,11 @@ pub struct Manager {
 }
 
 impl Manager {
-    pub fn new(term: &str, pool_size: usize, buf_size: usize) -> Manager {
+    pub fn new(log: Logger, term: &str, pool_size: usize, buf_size: usize) -> Manager {
         let (done_tx, done_rx) = crossbeam::bounded(pool_size);
 
         Manager {
+            log,
             term: term.to_owned(),
             queue: Arc::new(Injector::<String>::new()),
             pool_size,
@@ -36,7 +39,9 @@ impl Manager {
     }
 
     pub fn spawn(&self) -> bool {
-        for _ in 0..self.pool_size {
+        for i in 0..self.pool_size {
+            let log = self.log.new(o!("worker" => i));
+            debug!(log, "starting");
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
             let mut stdout = BufWriter::new(io::stdout());
@@ -55,8 +60,11 @@ impl Manager {
                         let path = Path::new(&f);
 
                         let mut handle = match fs::File::open(path) {
-                            Ok(h) => h,
-                            Err(e) => { continue; },
+                            Ok(handle) => handle,
+                            Err(err) => {
+                                info!(log, "Error occurred while reading file {}: {}", &f, err);
+                                continue;
+                            },
                         };
 
                         let val = process(&term, &mut handle, buf_size);
@@ -79,6 +87,7 @@ impl Manager {
                 done_tx.send(found).unwrap_or_else(|err| {
                     println!("{}", err);
                 });
+                debug!(log, "stopped");
             });
         }
         true
