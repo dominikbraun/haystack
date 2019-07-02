@@ -11,7 +11,6 @@ use slog::{Drain, error, info, Logger, o};
 
 mod core;
 mod app;
-mod exp;
 
 const GIT_HASH: &str = env!("GIT_HASH");
 
@@ -57,11 +56,7 @@ fn main() -> Result<(), io::Error> {
     // start measuring execution time
     let now = Instant::now();
 
-    let res = if matches.is_present("exp") {
-        run_exp(dir, term, pool_size, buf_size)
-    } else {
-        run_stable(dir, term, pool_size, buf_size)
-    };
+    let res = run_stable(dir, term, pool_size, buf_size);
 
     if matches.is_present("benchmark") {
         info!(log, "\nElapsed time:\n{} µs\n{} ms\n{} s",
@@ -82,21 +77,12 @@ fn main() -> Result<(), io::Error> {
 }
 
 fn run_stable(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
-    let haystack = core::Manager::new(term, pool_size);
+    let haystack = core::Manager::new(term, pool_size, buf_size);
     haystack.spawn();
 
     core::scan(dir, &haystack);
 
     Ok(haystack.stop() as u32)
-}
-
-fn run_exp(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
-    let haystack = exp::Manager::new(term, pool_size, buf_size);
-    haystack.spawn();
-    
-    exp::scan(dir, &haystack);
-    
-    Ok(haystack.stop())
 }
 
 fn logger() -> Logger {

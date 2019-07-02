@@ -4,31 +4,38 @@ extern crate walkdir;
 use std::fs;
 use std::io;
 use std::io::{BufReader, Read};
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::AtomicU16;
 use std::thread;
 
 use crossbeam::deque::Injector;
 use crossbeam::deque::Steal;
-use crossbeam::sync;
 use walkdir::WalkDir;
 
 pub struct Manager {
     term: String,
     queue: Arc<Injector<String>>,
     pool_size: usize,
-    gate: sync::WaitGroup,
+    buf_size: usize,
+    done_tx: crossbeam::Sender<u32>,
+    done_rx: crossbeam::Receiver<u32>,
     total: Arc<AtomicU16>,
 }
 
 impl Manager {
-    pub fn new(term: &str, pool_size: usize) -> Manager {
+    pub fn new(term: &str, pool_size: usize, buf_size: usize) -> Manager {
+        let stdout = BufWriter::new(io::stdout());
+        let (done_tx, done_rx) = crossbeam::bounded(pool_size);
+
         Manager {
             term: term.to_owned(),
             queue: Arc::new(Injector::<String>::new()),
             pool_size,
-            gate: sync::WaitGroup::new(),
+            buf_size,
+            done_tx,
+            done_rx,
             total: Arc::new(AtomicU16::new(0)),
         }
     }
@@ -37,29 +44,46 @@ impl Manager {
         for _ in 0..self.pool_size {
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
-            let gate = self.gate.clone();
-            let total = Arc::clone(&self.total);
+            let mut stdout = BufWriter::new(io::stdout());
+            let buf_size = self.buf_size.clone();
+            let done_tx = self.done_tx.clone();
 
             thread::spawn(move || {
+                let mut found: u32 = 0;
+
                 loop {
                     if let Steal::Success(f) = queue.steal() {
                         if f.is_empty() {
+                            // empty string is the signal for closing
                             break;
                         }
                         let path = Path::new(&f);
-                        
-                        let handle = match fs::File::open(path) {
+
+                        let mut handle = match fs::File::open(path) {
                             Ok(h) => h,
-                            Err(_) => { continue; },
+                            Err(e) => { continue; },
                         };
 
-                        if process(&term, handle) > 0 {
-                            let mut val = total.load(Ordering::Relaxed);
-                            total.store(val + 1, Ordering::Relaxed);
+                        let val = process(&term, &mut handle, buf_size);
+
+                        if val > 0 {
+                            found = found + val as u32;
+
+                            let mut output = String::with_capacity(2048);
+
+                            output.push_str(&val.to_string());
+                            output.push_str("x in");
+                            output.push_str(&f);
+                            output.push('\n');
+
+                            stdout.write_all(output.as_bytes());
                         }
                     }
                 }
-                drop(gate);
+
+                done_tx.send(found).unwrap_or_else(|err| {
+                    println!("{}", err);
+                });
             });
         }
         true
@@ -69,18 +93,29 @@ impl Manager {
         self.queue.push(file);
     }
 
-    pub fn stop(self) -> u16 {
+    pub fn stop(&self) -> u32 {
+        // send empty string for each worker (empty string is command for closing)
         for _ in 0..self.pool_size {
             self.queue.push(String::new());
         }
-        self.gate.wait();
-        
-        return self.total.load(Ordering::Relaxed);
+
+        loop {
+            if self.done_rx.len() == self.pool_size {
+                break;
+            }
+        }
+
+        let mut sum: u32 = 0;
+
+        for _ in 0..self.pool_size {
+            sum = sum + self.done_rx.recv().unwrap_or(0);
+        }
+        return sum;
     }
 }
 
 pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
-    
+
     let items = WalkDir::new(dir.to_owned()).into_iter().filter_map(|i| {
         i.ok()
     });
@@ -94,21 +129,20 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
     Result::Ok(())
 }
 
-fn process(term: &str, handle: fs::File) -> u16 {
-    let mut reader = BufReader::new(handle);
-    let mut buf = vec![0; 8000];
+fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
+    let mut buf = vec![0; buf_size];
 
     let mut cursor = 0;
-    let mut found: u16 = 0;
+    let mut found: u32 = 0;
 
     let term = term.as_bytes();
 
     loop {
-        if let Ok(len) = reader.read(&mut buf) {
+        if let Ok(len) = handle.read(&mut buf) {
             if len == 0 {
                 break;
             }
-            
+
             for i in 0..len {
                 if buf[i] == term[cursor] {
                     cursor += 1;
@@ -130,4 +164,72 @@ fn process(term: &str, handle: fs::File) -> u16 {
         }
     }
     found
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error;
+    use std::io::{BufReader, Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
+    use std::sync::Arc;
+
+    use slog::{Drain, Logger, o};
+
+    use crate::core::{Manager, process};
+
+    fn setup_fake_file(data: &str) -> Cursor<Vec<u8>> {
+        let mut fake_file = Cursor::new(Vec::new());
+
+        // Write into the "file" and seek to the beginning
+        fake_file.write_all(data.as_bytes()).unwrap();
+        fake_file.seek(SeekFrom::Start(0)).unwrap();
+
+        return fake_file
+    }
+
+    fn logger() -> Logger {
+        let decorator = slog_term::PlainDecorator::new(std::io::stdout());
+        let drain = slog_term::CompactFormat::new(decorator).build().fuse();
+        let drain = slog_async::Async::new(drain).build().fuse();
+        return Logger::root(
+            drain,
+            o!(),
+        );
+    }
+
+    #[test]
+    fn find_at_end() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert_eq!(1, process("789", &mut reader, 5), "finding the search term at the end should return true");
+    }
+
+    /// This test should NOT fail (e. g. index out of bounds)
+    #[test]
+    fn find_only_half_at_end() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert_eq!(0, process("8910", &mut reader, 5), "finding the pattern only half at the end should return false");
+    }
+
+    #[test]
+    fn find_at_beginning() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert_eq!(1, process("012", &mut reader, 5), "finding the pattern at the beginning should return true");
+    }
+
+    #[test]
+    fn find_at_center() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert_eq!(1, process("34567", &mut reader, 5), "finding the pattern at the center should return true");
+    }
+
+    #[test]
+    fn finding_nothing() {
+        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        assert_eq!(0, process("asdf", &mut reader, 5), "finding nothing should return false");
+    }
+
+    #[test]
+    fn find_several_times() {
+        let mut reader = BufReader::new(setup_fake_file("abc01234abc56789abcjab"));
+        assert_eq!(3, process("abc", &mut reader, 10), "the pattern should exist 3 times in the file");
+    }
 }
