@@ -23,7 +23,6 @@ pub struct Manager {
 
 impl Manager {
     pub fn new(term: &str, pool_size: usize, buf_size: usize) -> Manager {
-        let stdout = BufWriter::new(io::stdout());
         let (done_tx, done_rx) = crossbeam::bounded(pool_size);
 
         Manager {
@@ -195,7 +194,8 @@ mod tests {
     #[test]
     fn find_at_end() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert_eq!(1, process("789", &mut reader, 5), "finding the search term at the end should return true");
+        // use buf size 4 to test also, if it works if the buffer is not full at the end
+        assert_eq!(1, process("789", &mut reader, 4), "finding the search term at the end should return true");
     }
 
     /// This test should NOT fail (e. g. index out of bounds)
