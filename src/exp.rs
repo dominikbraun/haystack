@@ -135,10 +135,13 @@ fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
                 break;
             }
 
-            // stop loop if at the end of len --> buffer is not cleared,
-            // so there may be trash at the end which we don't want to iterate
-            // ---> that's why the filter
-            for (_, byte) in buf.iter().enumerate().filter(|(pos, _)| *pos < len) {
+            for (pos, byte) in buf.iter().enumerate() {
+                if pos == len {
+                    // stop loop if at the end of len --> buffer is not cleared,
+                    // so there may be trash at the end which we don't want to iterate
+                    break;
+                }
+
                 if *byte == term[cursor] {
                     cursor += 1;
                 } else if cursor > 0 {
@@ -194,8 +197,7 @@ mod tests {
     #[test]
     fn find_at_end() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        // use buf_size 4 to check also the case when the buffer isnot filled fully at the end
-        assert_eq!(1, process("789", &mut reader, 4), "finding the search term at the end should return true");
+        assert_eq!(1, process("789", &mut reader, 5), "finding the search term at the end should return true");
     }
 
     /// This test should NOT fail (e. g. index out of bounds)
