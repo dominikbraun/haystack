@@ -134,12 +134,18 @@ fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
             if len == 0 {
                 break;
             }
-            
-            for i in 0..len {
-                if buf[i] == term[cursor] {
+
+            for (pos, byte) in buf.iter().enumerate() {
+                if pos == len {
+                    // stop loop if at the end of len --> buffer is not cleared,
+                    // so there may be trash at the end which we don't want to iterate
+                    break;
+                }
+
+                if *byte == term[cursor] {
                     cursor += 1;
                 } else if cursor > 0 {
-                    if buf[i] == term[0] {
+                    if *byte == term[0] {
                         cursor = 1;
                     } else {
                         cursor = 0;
