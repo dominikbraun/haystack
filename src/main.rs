@@ -10,22 +10,14 @@ use clap::Error;
 use clap::ErrorKind;
 use slog::{debug, Drain, error, info, Level, Logger, o};
 
-mod core;
+use crate::log::build_logger;
+
 mod app;
-
-const GIT_HASH: &str = env!("GIT_HASH");
-
-macro_rules! error_panic {
-    ($log:expr, $err:expr) => {
-        error!(&$log, "{}", $err);
-        panic!($err);
-    };
-}
+mod core;
+mod log;
 
 fn main() {
-    let log = logger();
-    debug!(log, "Starting Haystack");
-
+    let log = build_logger();
     let matches = app::build().get_matches();
 
     let dir = matches.value_of("haystack").unwrap_or_else(|| {
@@ -37,7 +29,7 @@ fn main() {
     });
 
     let buf_size = matches
-        .value_of("buffersize")
+        .value_of("bufsize")
         .unwrap_or("8192")
         .parse::<usize>()
         .unwrap_or_else(|err| {
@@ -53,11 +45,10 @@ fn main() {
         });
     
     let with_snippets = matches.is_present("snippets");
-
-    // start measuring execution time
+    
     let now = Instant::now();
-
-    let res = run(log.new(o!("manager" => 1)), dir, term, pool_size, buf_size);
+    
+    let total = run(log.new(o!("manager" => 1)), dir, term, pool_size, buf_size);
 
     if matches.is_present("benchmark") {
         println!("\nElapsed time:\n{} µs\n{} ms\n{} s",
@@ -66,10 +57,10 @@ fn main() {
                  now.elapsed().as_secs());
     };
 
-    match res {
+    match total {
         Ok(count) => println!("found {} times", count),
-        Err(err) => {
-            error_panic!(log, err);
+        Err(e) => {
+            error_panic!(log, e);
         },
     };
 }
@@ -81,51 +72,4 @@ fn run(log: Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) ->
     core::scan(dir, &haystack);
 
     Ok(haystack.stop() as u32)
-}
-
-#[cfg(debug_assertions)]
-fn logger() -> Logger {
-    let decorator = slog_term::PlainDecorator::new(std::io::stdout());
-    // ToDo: Fuse needed? (panics when Drain errors)
-    let drain = slog_term::CompactFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
-
-    let git_hash: String = if !GIT_HASH.is_empty() {
-        format!("-{}", GIT_HASH)
-    } else {
-        String::new()
-    };
-
-    return Logger::root(
-        drain.fuse(),
-        o!("version" => format!("v{}{}", env!("CARGO_PKG_VERSION"), git_hash)),
-    );
-}
-
-
-#[cfg(not(debug_assertions))]
-fn logger() -> Logger {
-    let log_path = "haystack.log";
-    let file = OpenOptions::new()
-        .create(true)
-        .write(true)
-        .truncate(true)
-        .open(log_path)
-        .unwrap();
-
-    let decorator = slog_term::PlainDecorator::new(file);
-    // ToDo: Fuse needed? (panics when Drain errors)
-    let drain = slog_term::CompactFormat::new(decorator).build().fuse();
-    let drain = slog_async::Async::new(drain).build().fuse();
-
-    let git_hash: String = if !GIT_HASH.is_empty() {
-        format!("-{}", GIT_HASH)
-    } else {
-        String::new()
-    };
-
-    return Logger::root(
-        drain.fuse(),
-        o!("version" => format!("v{}{}", env!("CARGO_PKG_VERSION"), git_hash)),
-    );
 }
