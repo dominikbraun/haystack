@@ -42,7 +42,7 @@ impl Manager {
         for i in 0..self.pool_size {
             let log = self.log.new(o!("worker" => i));
             
-            debug!(log, "Spawning worker threads");
+            debug!(log, "Spawning worker thread");
             
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
