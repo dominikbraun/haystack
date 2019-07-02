@@ -22,7 +22,7 @@ macro_rules! error_panic {
     };
 }
 
-fn main() -> Result<(), io::Error> {
+fn main() {
     let log = logger();
     debug!(log, "Starting Haystack");
 
@@ -69,12 +69,9 @@ fn main() -> Result<(), io::Error> {
     match res {
         Ok(count) => println!("found {} times", count),
         Err(err) => {
-            error!(log, "{}", err);
-            return Err(err)
+            error_panic!(log, err);
         },
     };
-
-    return Ok(());
 }
 
 fn run(dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {

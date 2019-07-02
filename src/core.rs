@@ -6,7 +6,6 @@ use std::io;
 use std::io::{BufWriter, Read, Write};
 use std::path::Path;
 use std::sync::Arc;
-use std::sync::atomic::AtomicU16;
 use std::thread;
 
 use crossbeam::deque::Injector;
