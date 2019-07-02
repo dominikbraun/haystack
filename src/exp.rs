@@ -98,10 +98,10 @@ impl Manager {
         }
 
         let mut sum: u32 = 0;
+        
         for _ in 0..self.pool_size {
             sum = sum + self.done_rx.recv().unwrap_or(0);
         }
-
         return sum;
     }
 }
@@ -122,7 +122,6 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
 }
 
 fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
-    let mut reader = BufReader::new(handle);
     let mut buf = vec![0; buf_size];
 
     let mut cursor = 0;
@@ -131,7 +130,7 @@ fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
     let term = term.as_bytes();
 
     loop {
-        if let Ok(len) = reader.read(&mut buf) {
+        if let Ok(len) = handle.read(&mut buf) {
             if len == 0 {
                 break;
             }
