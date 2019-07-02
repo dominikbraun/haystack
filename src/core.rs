@@ -62,7 +62,7 @@ impl Manager {
                         let mut handle = match fs::File::open(path) {
                             Ok(handle) => handle,
                             Err(err) => {
-                                info!(log, "Error occurred while reading file {}: {}", &f, err);
+                                error!(log, "Error occurred while reading file {}: {}", &f, err);
                                 continue;
                             },
                         };
