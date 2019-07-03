@@ -10,7 +10,7 @@ use std::thread;
 
 use crossbeam::deque::Injector;
 use crossbeam::deque::Steal;
-use slog::{debug, error, info, Logger, o, trace};
+use slog::{debug, error, info, Logger, o};
 use walkdir::WalkDir;
 
 pub struct Manager {
@@ -44,8 +44,8 @@ impl Manager {
         for i in 0..self.pool_size {
             let log = self.log.new(o!("worker" => i));
 
-            trace!(log, "Spawning worker thread");
-            
+            debug!(log, "spawning");
+
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
             let buf_size = self.buf_size.clone();
@@ -67,8 +67,8 @@ impl Manager {
 
                         let mut handle = match fs::File::open(path) {
                             Ok(handle) => handle,
-                            Err(err) => {
-                                error!(log, "Error occurred while reading file {}: {}", &f, err);
+                            Err(e) => {
+                                error!(log, "Error occurred while reading file {}: {}", &f, e);
                                 continue;
                             },
                         };
@@ -76,7 +76,7 @@ impl Manager {
                         let val = process(&term, &mut handle, buf_size);
 
                         if val > 0 {
-                            found += val as u32;
+                            found += val;
 
                             let mut output = String::with_capacity(2048);
 
@@ -91,11 +91,11 @@ impl Manager {
                 }
                 stdout.flush();
                 
+                debug!(log, "stopping");
+
                 done_tx.send(found).unwrap_or_else(|err| {
                     println!("{}", err);
                 });
-
-                trace!(log, "stopped worker thread");
             });
         }
         true
@@ -122,7 +122,7 @@ impl Manager {
         for _ in 0..self.pool_size {
             sum += self.done_rx.recv().unwrap_or(0);
         }
-        return sum;
+        sum
     }
 }
 
@@ -147,11 +147,10 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
 }
 
 fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
-    let mut buf = vec![0; buf_size];
+    let mut buf: Vec<u8> = vec![0; buf_size];
 
     let mut cursor = 0;
     let mut found: u32 = 0;
-
     let term = term.as_bytes();
 
     loop {

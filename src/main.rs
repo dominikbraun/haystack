@@ -58,10 +58,9 @@ fn main() {
     let total = run(log.new(o!("manager" => 1)), dir, term, pool_size, buf_size, max_depth);
 
     if matches.is_present("benchmark") {
-        println!("\nElapsed time:\n{} µs\n{} ms\n{} s",
+        println!("\nElapsed time:\n{} µs\n{} ms",
                  now.elapsed().as_micros(),
-                 now.elapsed().as_millis(),
-                 now.elapsed().as_secs());
+                 now.elapsed().as_millis());
     };
 
     match total {
@@ -78,5 +77,5 @@ fn run(log: Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize, ma
 
     core::scan(dir, &haystack);
 
-    Ok(haystack.stop() as u32)
+    Ok(haystack.stop())
 }
