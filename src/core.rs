@@ -49,8 +49,9 @@ impl Manager {
             let buf_size = self.buf_size.clone();
             let done_tx = self.done_tx.clone();
 
+            let mut stdout = BufWriter::new(io::stdout());
+
             thread::spawn(move || {
-                let mut stdout = BufWriter::new(io::stdout());
                 let mut found: u32 = 0;
 
                 loop {
@@ -119,7 +120,7 @@ impl Manager {
         for _ in 0..self.pool_size {
             sum += self.done_rx.recv().unwrap_or(0);
         }
-        return sum;
+        sum
     }
 }
 
@@ -140,10 +141,9 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
 
 fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
     let mut buf: Vec<u8> = vec![0; buf_size];
-
+    
     let mut cursor = 0;
     let mut found: u32 = 0;
-
     let term = term.as_bytes();
 
     loop {
