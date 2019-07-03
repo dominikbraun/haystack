@@ -32,7 +32,7 @@ fn main() {
     let needle = m.value_of("needle").unwrap();
 
     let snippets = m.is_present("snippets");
-    let benchmark = m.is_present("benchmarks");
+    let benchmark = m.is_present("benchmark");
     
     let max_depth = m.value_of("max_depth").map(|d| {
         d.parse::<usize>().unwrap_or_else(|err| {
