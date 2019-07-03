@@ -51,12 +51,19 @@ fn main() {
         .unwrap_or_else(|err| {
             error_panic!(log, err);
         });
+
+    let max_depth = matches
+        .value_of("max_depth")
+        .map(|depth| depth.parse::<usize>()
+            .unwrap_or_else(|err| {
+                error_panic!(log, err);
+            }));
     
     let with_snippets = matches.is_present("snippets");
     
     let now = Instant::now();
-    
-    let total = run(log.new(o!("manager" => 1)), dir, term, pool_size, buf_size);
+
+    let total = run(log.new(o!("manager" => 1)), dir, term, pool_size, buf_size, max_depth);
 
     if matches.is_present("benchmark") {
         println!("\nElapsed time:\n{} µs\n{} ms",
@@ -72,8 +79,8 @@ fn main() {
     };
 }
 
-fn run(log: Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize) -> Result<u32, io::Error> {
-    let haystack = core::Manager::new(log, term, pool_size, buf_size);
+fn run(log: Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize, max_depth: Option<usize>) -> Result<u32, io::Error> {
+    let haystack = core::Manager::new(log, term, pool_size, buf_size, max_depth);
     haystack.spawn();
 
     core::scan(dir, &haystack);

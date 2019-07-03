@@ -19,12 +19,13 @@ pub struct Manager {
     queue: Arc<Injector<String>>,
     pool_size: usize,
     buf_size: usize,
+    max_depth: Option<usize>,
     done_tx: crossbeam::Sender<u32>,
     done_rx: crossbeam::Receiver<u32>,
 }
 
 impl Manager {
-    pub fn new(log: Logger, term: &str, pool_size: usize, buf_size: usize) -> Manager {
+    pub fn new(log: Logger, term: &str, pool_size: usize, buf_size: usize, max_depth: Option<usize>) -> Manager {
         let (done_tx, done_rx) = crossbeam::bounded(pool_size);
 
         Manager {
@@ -33,6 +34,7 @@ impl Manager {
             queue: Arc::new(Injector::<String>::new()),
             pool_size,
             buf_size,
+            max_depth,
             done_tx,
             done_rx,
         }
@@ -41,9 +43,9 @@ impl Manager {
     pub fn spawn(&self) -> bool {
         for i in 0..self.pool_size {
             let log = self.log.new(o!("worker" => i));
-            
+
             debug!(log, "spawning");
-            
+
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
             let buf_size = self.buf_size.clone();
@@ -90,7 +92,7 @@ impl Manager {
                 stdout.flush();
                 
                 debug!(log, "stopping");
-                
+
                 done_tx.send(found).unwrap_or_else(|err| {
                     println!("{}", err);
                 });
@@ -125,8 +127,13 @@ impl Manager {
 }
 
 pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
+    let mut walker = WalkDir::new(dir.to_owned());
 
-    let items = WalkDir::new(dir.to_owned()).into_iter().filter_map(|i| {
+    if manager.max_depth.is_some() {
+        walker = walker.max_depth(manager.max_depth.unwrap());
+    }
+
+    let items = walker.into_iter().filter_map(|i| {
         i.ok()
     });
 
@@ -141,7 +148,7 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
 
 fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
     let mut buf: Vec<u8> = vec![0; buf_size];
-    
+
     let mut cursor = 0;
     let mut found: u32 = 0;
     let term = term.as_bytes();
