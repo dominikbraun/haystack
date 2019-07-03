@@ -6,11 +6,11 @@ pub fn build() -> App<'static, 'static> {
     App::new("haystack")
         .arg(arg_dir())
         .arg(arg_needle())
-        .arg(arg_max_depth())
-        .arg(flag_recursive())
+        .arg(flag_snippets())
         .arg(flag_benchmark())
+        .arg(arg_max_depth())
+        .arg(arg_buf_size())
         .arg(arg_poolsize())
-        .arg(arg_bufsize())
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
@@ -29,33 +29,6 @@ fn arg_needle() -> Arg<'static, 'static> {
         .required(true)
 }
 
-fn arg_max_depth() -> Arg<'static, 'static> {
-    Arg::with_name("max_depth")
-        .short("d")
-        .long("max-depth")
-        .help("Used buffer size for reading from the buffered reader.")
-        .takes_value(true)
-        .required(false)
-}
-
-fn flag_recursive() -> Arg<'static, 'static> {
-    Arg::with_name("recursive")
-        .short("r")
-        .long("recursive")
-        .help("Search files in all subdirectories, too.")
-        .takes_value(false)
-        .required(false)
-}
-
-fn flag_benchmark() -> Arg<'static, 'static> {
-    Arg::with_name("benchmark")
-        .short("B")
-        .long("benchmark")
-        .help("Displays benchmarking data.")
-        .takes_value(false)
-        .required(false)
-}
-
 fn flag_snippets() -> Arg<'static, 'static> {
     Arg::with_name("snippets")
         .short("s")
@@ -65,18 +38,35 @@ fn flag_snippets() -> Arg<'static, 'static> {
         .required(false)
 }
 
-fn arg_poolsize() -> Arg<'static, 'static> {
-    Arg::with_name("poolsize")
-        .long("poolsize")
-        .help("The worker pool size, i. e. number of threads.")
+fn flag_benchmark() -> Arg<'static, 'static> {
+    Arg::with_name("benchmark")
+        .long("benchmark")
+        .help("Displays benchmarking data.")
+        .takes_value(false)
+        .required(false)
+}
+
+fn arg_max_depth() -> Arg<'static, 'static> {
+    Arg::with_name("max_depth")
+        .short("d")
+        .long("max-depth")
+        .help("Used buffer size for reading from the buffered reader.")
         .takes_value(true)
         .required(false)
 }
 
-fn arg_bufsize() -> Arg<'static, 'static> {
+fn arg_buf_size() -> Arg<'static, 'static> {
     Arg::with_name("buf_size")
         .long("bufsize")
         .help("Used buffer size for reading from the buffered reader.")
+        .takes_value(true)
+        .required(false)
+}
+
+fn arg_poolsize() -> Arg<'static, 'static> {
+    Arg::with_name("poolsize")
+        .long("poolsize")
+        .help("The worker pool size, i. e. number of threads.")
         .takes_value(true)
         .required(false)
 }
