@@ -6,6 +6,7 @@ pub fn build() -> App<'static, 'static> {
     App::new("haystack")
         .arg(arg_dir())
         .arg(arg_needle())
+        .arg(arg_max_depth())
         .arg(flag_recursive())
         .arg(flag_benchmark())
         .arg(arg_poolsize())
@@ -29,6 +30,15 @@ fn arg_needle() -> Arg<'static, 'static> {
         .help("The text you want to search for.")
         .takes_value(true)
         .required(true)
+}
+
+fn arg_max_depth() -> Arg<'static, 'static> {
+    Arg::with_name("max_depth")
+        .short("d")
+        .long("max-depth")
+        .help("Used buffer size for reading from the buffered reader.")
+        .takes_value(true)
+        .required(false)
 }
 
 fn flag_recursive() -> Arg<'static, 'static> {

@@ -10,7 +10,7 @@ use std::thread;
 
 use crossbeam::deque::Injector;
 use crossbeam::deque::Steal;
-use slog::{debug, error, info, Logger, o};
+use slog::{debug, error, info, Logger, o, trace};
 use walkdir::WalkDir;
 
 pub struct Manager {
@@ -19,12 +19,13 @@ pub struct Manager {
     queue: Arc<Injector<String>>,
     pool_size: usize,
     buf_size: usize,
+    max_depth: Option<usize>,
     done_tx: crossbeam::Sender<u32>,
     done_rx: crossbeam::Receiver<u32>,
 }
 
 impl Manager {
-    pub fn new(log: Logger, term: &str, pool_size: usize, buf_size: usize) -> Manager {
+    pub fn new(log: Logger, term: &str, pool_size: usize, buf_size: usize, max_depth: Option<usize>) -> Manager {
         let (done_tx, done_rx) = crossbeam::bounded(pool_size);
 
         Manager {
@@ -33,6 +34,7 @@ impl Manager {
             queue: Arc::new(Injector::<String>::new()),
             pool_size,
             buf_size,
+            max_depth,
             done_tx,
             done_rx,
         }
@@ -41,8 +43,8 @@ impl Manager {
     pub fn spawn(&self) -> bool {
         for i in 0..self.pool_size {
             let log = self.log.new(o!("worker" => i));
-            
-            debug!(log, "Spawning worker thread");
+
+            trace!(log, "Spawning worker thread");
             
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
@@ -92,8 +94,8 @@ impl Manager {
                 done_tx.send(found).unwrap_or_else(|err| {
                     println!("{}", err);
                 });
-                
-                debug!(log, "stopped");
+
+                trace!(log, "stopped worker thread");
             });
         }
         true
@@ -125,8 +127,13 @@ impl Manager {
 }
 
 pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
+    let mut walker = WalkDir::new(dir.to_owned());
 
-    let items = WalkDir::new(dir.to_owned()).into_iter().filter_map(|i| {
+    if manager.max_depth.is_some() {
+        walker = walker.max_depth(manager.max_depth.unwrap());
+    }
+
+    let items = walker.into_iter().filter_map(|i| {
         i.ok()
     });
 
