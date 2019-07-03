@@ -14,9 +14,8 @@ pub fn build() -> App<'static, 'static> {
 }
 
 fn arg_dir() -> Arg<'static, 'static> {
-    Arg::with_name("haystack")
-        .short("h")
-        .long("haystack")
+    Arg::with_name("dir")
+        .index(1)
         .help("The directory to be searched in.")
         .takes_value(true)
         .required(true)
@@ -24,9 +23,7 @@ fn arg_dir() -> Arg<'static, 'static> {
 
 fn arg_needle() -> Arg<'static, 'static> {
     Arg::with_name("needle")
-        .short("n")
-        .long("needle")
-        .alias("term")
+        .index(2)
         .help("The text you want to search for.")
         .takes_value(true)
         .required(true)
@@ -77,7 +74,7 @@ fn arg_poolsize() -> Arg<'static, 'static> {
 }
 
 fn arg_bufsize() -> Arg<'static, 'static> {
-    Arg::with_name("bufsize")
+    Arg::with_name("buf_size")
         .long("bufsize")
         .help("Used buffer size for reading from the buffered reader.")
         .takes_value(true)

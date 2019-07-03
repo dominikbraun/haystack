@@ -16,60 +16,55 @@ mod app;
 mod core;
 mod log;
 
-struct Settings {
-    maxdepth: usize,
+pub struct Settings {
     snippets: bool,
     benchmark: bool,
+    max_depth: Option<usize>,
     buf_size: usize,
     pool_size: usize,
 }
 
 fn main() {
+    let m = app::build().get_matches();
     let log = build_logger();
-    let matches = app::build().get_matches();
 
-    let dir = matches.value_of("haystack").unwrap_or_else(|| {
-        error_panic!(log, Error::with_description("'haystack' parameter needed", ErrorKind::ArgumentNotFound));
+    let dir = m.value_of("dir").unwrap();
+    let needle = m.value_of("needle").unwrap();
+
+    let snippets = m.is_present("snippets");
+    let benchmark = m.is_present("benchmarks");
+    
+    let max_depth = m.value_of("max_depth").map(|d| {
+        d.parse::<usize>().unwrap_or_else(|err| {
+            error_panic!(log, err);
+        })
     });
 
-    let term = matches.value_of("needle").unwrap_or_else(|| {
-        error_panic!(log, Error::with_description("'needle' parameter needed", ErrorKind::ArgumentNotFound));
-    });
-
-    let buf_size = matches
-        .value_of("bufsize")
+    let buf_size = m.value_of("buf_size")
         .unwrap_or("8192")
         .parse::<usize>()
         .unwrap_or_else(|err| {
             error_panic!(log, err);
         });
 
-    let pool_size = matches
-        .value_of("poolsize")
+    let pool_size = m.value_of("poolsize")
         .unwrap_or("8")
         .parse::<usize>()
         .unwrap_or_else(|err| {
             error_panic!(log, err);
         });
 
-    let max_depth = matches
-        .value_of("max_depth")
-        .map(|depth| depth.parse::<usize>()
-            .unwrap_or_else(|err| {
-                error_panic!(log, err);
-            }));
-    
-    let with_snippets = matches.is_present("snippets");
+    let options = Settings {
+        snippets, benchmark, max_depth, buf_size, pool_size,
+    };
     
     let now = Instant::now();
 
-    let total = run(log.new(o!("manager" => 1)), dir, term, pool_size, buf_size, max_depth);
+    let total = run(log.new(o!("manager" => 1)), dir, needle, &options);
 
-    if matches.is_present("benchmark") {
-        println!("\nElapsed time:\n{} µs\n{} ms",
-                 now.elapsed().as_micros(),
-                 now.elapsed().as_millis());
-    };
+    if options.benchmark {
+        println!("\nElapsed time: {} ms", now.elapsed().as_millis());
+    }
 
     match total {
         Ok(count) => println!("found {} times", count),
@@ -79,8 +74,8 @@ fn main() {
     };
 }
 
-fn run(log: Logger, dir: &str, term: &str, pool_size: usize, buf_size: usize, max_depth: Option<usize>) -> Result<u32, io::Error> {
-    let haystack = core::Manager::new(log, term, pool_size, buf_size, max_depth);
+fn run(log: Logger, dir: &str, term: &str, options: &Settings) -> Result<u32, io::Error> {
+    let haystack = core::Manager::new(log, term, options);
     haystack.spawn();
 
     core::scan(dir, &haystack);

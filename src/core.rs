@@ -13,42 +13,40 @@ use crossbeam::deque::Steal;
 use slog::{debug, error, info, Logger, o};
 use walkdir::WalkDir;
 
-pub struct Manager {
+use crate::Settings;
+
+pub struct Manager<'s> {
     log: Logger,
     term: String,
+    opt: &'s Settings,
     queue: Arc<Injector<String>>,
-    pool_size: usize,
-    buf_size: usize,
-    max_depth: Option<usize>,
     done_tx: crossbeam::Sender<u32>,
     done_rx: crossbeam::Receiver<u32>,
 }
 
-impl Manager {
-    pub fn new(log: Logger, term: &str, pool_size: usize, buf_size: usize, max_depth: Option<usize>) -> Manager {
-        let (done_tx, done_rx) = crossbeam::bounded(pool_size);
+impl<'s> Manager<'s> {
+    pub fn new(log: Logger, term: &str, options: &'s Settings) -> Manager<'s> {
+        let (done_tx, done_rx) = crossbeam::bounded(options.pool_size);
 
         Manager {
             log,
             term: term.to_owned(),
+            opt: options,
             queue: Arc::new(Injector::<String>::new()),
-            pool_size,
-            buf_size,
-            max_depth,
             done_tx,
             done_rx,
         }
     }
 
     pub fn spawn(&self) -> bool {
-        for i in 0..self.pool_size {
+        for i in 0..self.opt.pool_size {
             let log = self.log.new(o!("worker" => i));
 
             debug!(log, "spawning");
 
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
-            let buf_size = self.buf_size.clone();
+            let buf_size = self.opt.buf_size.clone();
             let done_tx = self.done_tx.clone();
 
             let mut stdout = BufWriter::new(io::stdout());
@@ -107,19 +105,19 @@ impl Manager {
 
     pub fn stop(&self) -> u32 {
         // Send an empty string to each worker queue.
-        for _ in 0..self.pool_size {
+        for _ in 0..self.opt.pool_size {
             self.queue.push(String::new());
         }
 
         loop {
-            if self.done_rx.len() == self.pool_size {
+            if self.done_rx.len() == self.opt.pool_size {
                 break;
             }
         }
 
         let mut sum: u32 = 0;
 
-        for _ in 0..self.pool_size {
+        for _ in 0..self.opt.pool_size {
             sum += self.done_rx.recv().unwrap_or(0);
         }
         sum
@@ -129,8 +127,8 @@ impl Manager {
 pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
     let mut walker = WalkDir::new(dir.to_owned());
 
-    if manager.max_depth.is_some() {
-        walker = walker.max_depth(manager.max_depth.unwrap());
+    if manager.opt.max_depth.is_some() {
+        walker = walker.max_depth(manager.opt.max_depth.unwrap());
     }
 
     let items = walker.into_iter().filter_map(|i| {
