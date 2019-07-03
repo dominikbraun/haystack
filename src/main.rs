@@ -16,6 +16,14 @@ mod app;
 mod core;
 mod log;
 
+struct Settings {
+    maxdepth: usize,
+    snippets: bool,
+    benchmark: bool,
+    buf_size: usize,
+    pool_size: usize,
+}
+
 fn main() {
     let log = build_logger();
     let matches = app::build().get_matches();
