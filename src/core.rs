@@ -109,16 +109,12 @@ impl<'s> Manager<'s> {
             self.queue.push(String::new());
         }
 
-        loop {
-            if self.done_rx.len() == self.opt.pool_size {
-                break;
-            }
-        }
-
+        let mut recv = 0;
         let mut sum: u32 = 0;
 
-        for _ in 0..self.opt.pool_size {
+        while recv < self.opt.pool_size {
             sum += self.done_rx.recv().unwrap_or(0);
+            recv += 1;
         }
         sum
     }
