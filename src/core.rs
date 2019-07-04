@@ -10,13 +10,11 @@ use std::thread;
 
 use crossbeam::deque::Injector;
 use crossbeam::deque::Steal;
-use slog::{debug, error, info, Logger, o};
 use walkdir::WalkDir;
 
 use crate::Settings;
 
 pub struct Manager<'s> {
-    log: Logger,
     term: String,
     opt: &'s Settings,
     queue: Arc<Injector<String>>,
@@ -25,11 +23,10 @@ pub struct Manager<'s> {
 }
 
 impl<'s> Manager<'s> {
-    pub fn new(log: Logger, term: &str, options: &'s Settings) -> Manager<'s> {
+    pub fn new(term: &str, options: &'s Settings) -> Manager<'s> {
         let (done_tx, done_rx) = crossbeam::bounded(options.pool_size);
 
         Manager {
-            log,
             term: term.to_owned(),
             opt: options,
             queue: Arc::new(Injector::<String>::new()),
@@ -40,10 +37,6 @@ impl<'s> Manager<'s> {
 
     pub fn spawn(&self) -> bool {
         for i in 0..self.opt.pool_size {
-            let log = self.log.new(o!("worker" => i));
-
-            debug!(log, "spawning");
-
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
             let buf_size = self.opt.buf_size.clone();
@@ -66,7 +59,7 @@ impl<'s> Manager<'s> {
                         let mut handle = match fs::File::open(path) {
                             Ok(handle) => handle,
                             Err(e) => {
-                                error!(log, "Error occurred while reading file {}: {}", &f, e);
+                                println!("Error occurred while reading file {}: {}", &f, e);
                                 continue;
                             },
                         };
@@ -88,8 +81,6 @@ impl<'s> Manager<'s> {
                     }
                 }
                 stdout.flush();
-                
-                debug!(log, "stopping");
 
                 done_tx.send(found).unwrap_or_else(|err| {
                     println!("{}", err);
@@ -180,8 +171,6 @@ mod tests {
     use std::io::{BufReader, Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
     use std::sync::Arc;
 
-    use slog::{Drain, Logger, o};
-
     use crate::core::{Manager, process};
 
     fn setup_fake_file(data: &str) -> Cursor<Vec<u8>> {
@@ -192,16 +181,6 @@ mod tests {
         fake_file.seek(SeekFrom::Start(0)).unwrap();
 
         return fake_file
-    }
-
-    fn logger() -> Logger {
-        let decorator = slog_term::PlainDecorator::new(std::io::stdout());
-        let drain = slog_term::CompactFormat::new(decorator).build().fuse();
-        let drain = slog_async::Async::new(drain).build().fuse();
-        return Logger::root(
-            drain,
-            o!(),
-        );
     }
 
     #[test]
