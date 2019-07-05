@@ -100,12 +100,10 @@ impl<'s> Manager<'s> {
             self.queue.push(String::new());
         }
 
-        let mut recv = 0;
         let mut sum: u32 = 0;
 
-        while recv < self.opt.pool_size {
+        for _ in 0..self.opt.pool_size {
             sum += self.done_rx.recv().unwrap_or(0);
-            recv += 1;
         }
         sum
     }
