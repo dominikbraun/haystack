@@ -86,7 +86,6 @@ impl<'s> Manager<'s> {
                 stdout.flush().unwrap_or_else(|err| {
                     eprintln!("{}", err);
                 });
-                ;
 
                 done_tx.send(found).unwrap_or_else(|err| {
                     eprintln!("{}", err);
