@@ -39,7 +39,7 @@ impl<'s> Manager<'s> {
         for _ in 0..self.opt.pool_size {
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
-            let buf_size = self.opt.buf_size.clone();
+            let buf_size = self.opt.buf_size;
             let done_tx = self.done_tx.clone();
 
             let mut stdout = BufWriter::new(io::stdout());
@@ -147,11 +147,11 @@ fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
                 break;
             }
 
-            for i in 0..len {
-                if buf[i] == term[cursor] {
+            for val in buf.iter().take(len) {
+                if *val == term[cursor] {
                     cursor += 1;
                 } else if cursor > 0 {
-                    if buf[i] == term[0] {
+                    if *val == term[0] {
                         cursor = 1;
                     } else {
                         cursor = 0;

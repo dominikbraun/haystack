@@ -69,5 +69,5 @@ fn run(dir: &str, term: &str, options: &Settings) -> Result<u32, io::Error> {
     let haystack = core::Manager::new(term, options);
     haystack.spawn();
 
-    return core::scan(dir, &haystack).map(|_| haystack.stop());
+    core::scan(dir, &haystack).map(|_| haystack.stop())
 }
