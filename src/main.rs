@@ -1,7 +1,3 @@
-use clap::Error;
-use clap::ErrorKind;
-
-use std::fs::{File, OpenOptions};
 use std::io;
 use std::time::Instant;
 
@@ -9,7 +5,7 @@ mod app;
 mod core;
 
 pub struct Settings {
-    snippets: bool,
+    _snippets: bool,
     benchmark: bool,
     max_depth: Option<usize>,
     buf_size: usize,
@@ -46,7 +42,11 @@ fn main() {
         });
 
     let options = Settings {
-        snippets, benchmark, max_depth, buf_size, pool_size,
+        _snippets: snippets,
+        benchmark,
+        max_depth,
+        buf_size,
+        pool_size,
     };
     
     let now = Instant::now();
@@ -60,7 +60,7 @@ fn main() {
     match total {
         Ok(count) => println!("found {} times", count),
         Err(e) => {
-            panic!(e);
+            eprintln!("{}", e);
         },
     };
 }
@@ -69,7 +69,5 @@ fn run(dir: &str, term: &str, options: &Settings) -> Result<u32, io::Error> {
     let haystack = core::Manager::new(term, options);
     haystack.spawn();
 
-    core::scan(dir, &haystack);
-
-    Ok(haystack.stop())
+    return core::scan(dir, &haystack).map(|_| haystack.stop());
 }

@@ -36,7 +36,7 @@ impl<'s> Manager<'s> {
     }
 
     pub fn spawn(&self) -> bool {
-        for i in 0..self.opt.pool_size {
+        for _ in 0..self.opt.pool_size {
             let term = self.term.clone();
             let queue = Arc::clone(&self.queue);
             let buf_size = self.opt.buf_size.clone();
@@ -59,7 +59,7 @@ impl<'s> Manager<'s> {
                         let mut handle = match fs::File::open(path) {
                             Ok(handle) => handle,
                             Err(e) => {
-                                println!("Error occurred while reading file {}: {}", &f, e);
+                                eprintln!("Error occurred while reading file {}: {}", &f, e);
                                 continue;
                             },
                         };
@@ -76,14 +76,19 @@ impl<'s> Manager<'s> {
                             output.push_str(&f);
                             output.push('\n');
 
-                            stdout.write_all(output.as_bytes());
+                            stdout.write_all(output.as_bytes()).unwrap_or_else(|err| {
+                                eprintln!("{}", err);
+                            });
                         }
                     }
                 }
-                stdout.flush();
+                stdout.flush().unwrap_or_else(|err| {
+                    eprintln!("{}", err);
+                });
+                ;
 
                 done_tx.send(found).unwrap_or_else(|err| {
-                    println!("{}", err);
+                    eprintln!("{}", err);
                 });
             });
         }

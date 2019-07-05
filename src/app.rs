@@ -1,6 +1,6 @@
 extern crate clap;
 
-use clap::{App, Arg, crate_version};
+use clap::{App, Arg};
 
 pub fn build() -> App<'static, 'static> {
     App::new("haystack")
