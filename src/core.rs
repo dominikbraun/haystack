@@ -197,37 +197,49 @@ mod tests {
     fn find_at_end() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
         // use buf size 4 to test also, if it works if the buffer is not full at the end
-        assert_eq!(1, process("789", &mut reader, 4), "finding the search term at the end should return true");
+        assert_eq!(1, process("789", &mut reader, 4, false), "finding the search term at the end should return true");
     }
 
     /// This test should NOT fail (e. g. index out of bounds)
     #[test]
     fn find_only_half_at_end() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert_eq!(0, process("8910", &mut reader, 5), "finding the pattern only half at the end should return false");
+        assert_eq!(0, process("8910", &mut reader, 5, false), "finding the pattern only half at the end should return false");
     }
 
     #[test]
     fn find_at_beginning() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert_eq!(1, process("012", &mut reader, 5), "finding the pattern at the beginning should return true");
+        assert_eq!(1, process("012", &mut reader, 5, false), "finding the pattern at the beginning should return true");
     }
 
     #[test]
     fn find_at_center() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert_eq!(1, process("34567", &mut reader, 5), "finding the pattern at the center should return true");
+        assert_eq!(1, process("34567", &mut reader, 5, false), "finding the pattern at the center should return true");
     }
 
     #[test]
     fn finding_nothing() {
         let mut reader = BufReader::new(setup_fake_file("0123456789"));
-        assert_eq!(0, process("asdf", &mut reader, 5), "finding nothing should return false");
+        assert_eq!(0, process("asdf", &mut reader, 5, false), "finding nothing should return false");
     }
 
     #[test]
     fn find_several_times() {
         let mut reader = BufReader::new(setup_fake_file("abc01234abc56789abcjab"));
-        assert_eq!(3, process("abc", &mut reader, 10), "the pattern should exist 3 times in the file");
+        assert_eq!(3, process("abc", &mut reader, 10, false), "the pattern should exist 3 times in the file");
+    }
+
+    #[test]
+    fn find_case_insensitive() {
+        let mut reader = BufReader::new(setup_fake_file("ABC01234aBc56789abcjab"));
+        assert_eq!(3, process("abc", &mut reader, 10, true), "the pattern should exist 3 times in the file");
+    }
+
+    #[test]
+    fn find_not_case_insensitive() {
+        let mut reader = BufReader::new(setup_fake_file("abc01234abc56789abcjab"));
+        assert_eq!(0, process("ABC", &mut reader, 10, false), "the pattern should exist 3 times in the file");
     }
 }
