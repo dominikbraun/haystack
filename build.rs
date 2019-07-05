@@ -8,5 +8,13 @@ fn main() {
     };
 
     let git_hash = git_hash.unwrap_or(String::new());
-    println!("cargo:rustc-env=GIT_HASH={}", git_hash);
+
+    let mut hash = String::new();
+
+    if !git_hash.is_empty() {
+        hash.push_str("-");
+        hash.push_str(git_hash.as_str());
+    }
+
+    println!("cargo:rustc-env=FULL_VERSION={}", format!("v{}{}", env!("CARGO_PKG_VERSION"), hash));
 }

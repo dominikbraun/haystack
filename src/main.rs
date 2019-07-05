@@ -1,13 +1,12 @@
+use clap::Error;
+use clap::ErrorKind;
+
 use std::fs::{File, OpenOptions};
 use std::io;
 use std::time::Instant;
 
-use clap::Error;
-use clap::ErrorKind;
-
 mod app;
 mod core;
-mod log;
 
 pub struct Settings {
     snippets: bool,

@@ -1,9 +1,10 @@
 extern crate clap;
 
-use clap::{App, Arg};
+use clap::{App, Arg, crate_version};
 
 pub fn build() -> App<'static, 'static> {
     App::new("haystack")
+        .version(env!("FULL_VERSION"))
         .arg(arg_dir())
         .arg(arg_needle())
         .arg(flag_snippets())
