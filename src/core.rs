@@ -41,6 +41,7 @@ impl<'s> Manager<'s> {
             let queue = Arc::clone(&self.queue);
             let buf_size = self.opt.buf_size;
             let done_tx = self.done_tx.clone();
+            let case_insensitive = self.opt.case_insensitive;
 
             let mut stdout = BufWriter::new(io::stdout());
 
@@ -64,7 +65,7 @@ impl<'s> Manager<'s> {
                             },
                         };
 
-                        let val = process(&term, &mut handle, buf_size);
+                        let val = process(&term, &mut handle, buf_size, case_insensitive);
 
                         if val > 0 {
                             found += val;
@@ -134,7 +135,7 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
     Result::Ok(())
 }
 
-fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
+fn process(term: &str, handle: &mut dyn Read, buf_size: usize, case_insensitive: bool) -> u32 {
     let mut buf: Vec<u8> = vec![0; buf_size];
 
     let mut cursor = 0;
@@ -148,10 +149,16 @@ fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
             }
 
             for val in buf.iter().take(len) {
-                if *val == term[cursor] {
+                let val = if case_insensitive {
+                    (*val).to_ascii_lowercase()
+                } else {
+                    *val
+                };
+
+                if val == term[cursor] {
                     cursor += 1;
                 } else if cursor > 0 {
-                    if *val == term[0] {
+                    if val == term[0] {
                         cursor = 1;
                     } else {
                         cursor = 0;
@@ -172,11 +179,9 @@ fn process(term: &str, handle: &mut dyn Read, buf_size: usize) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
-    use std::io::{BufReader, Cursor, ErrorKind, Read, Seek, SeekFrom, Write};
-    use std::sync::Arc;
+    use std::io::{BufReader, Cursor, Seek, SeekFrom, Write};
 
-    use crate::core::{Manager, process};
+    use crate::core::process;
 
     fn setup_fake_file(data: &str) -> Cursor<Vec<u8>> {
         let mut fake_file = Cursor::new(Vec::new());

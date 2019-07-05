@@ -6,6 +6,7 @@ mod core;
 
 pub struct Settings {
     _snippets: bool,
+    case_insensitive: bool,
     benchmark: bool,
     max_depth: Option<usize>,
     buf_size: usize,
@@ -17,6 +18,14 @@ fn main() {
 
     let dir = m.value_of("dir").unwrap();
     let needle = m.value_of("needle").unwrap();
+
+    let case_insensitive = m.is_present("case_insensitive");
+
+    let needle = if case_insensitive {
+        needle.to_ascii_lowercase()
+    } else {
+        needle.to_owned()
+    };
 
     let snippets = m.is_present("snippets");
     let benchmark = m.is_present("benchmark");
@@ -43,6 +52,7 @@ fn main() {
 
     let options = Settings {
         _snippets: snippets,
+        case_insensitive,
         benchmark,
         max_depth,
         buf_size,
@@ -51,7 +61,7 @@ fn main() {
     
     let now = Instant::now();
 
-    let total = run(dir, needle, &options);
+    let total = run(dir, needle.as_str(), &options);
 
     if options.benchmark {
         println!("\nElapsed time: {} ms", now.elapsed().as_millis());

@@ -8,6 +8,7 @@ pub fn build() -> App<'static, 'static> {
         .arg(arg_dir())
         .arg(arg_needle())
         .arg(flag_snippets())
+        .arg(case_insensitive())
         .arg(flag_benchmark())
         .arg(arg_max_depth())
         .arg(arg_buf_size())
@@ -35,6 +36,15 @@ fn flag_snippets() -> Arg<'static, 'static> {
         .short("s")
         .long("snippets")
         .help("Prints a text snippet containing the found search term.")
+        .takes_value(false)
+        .required(false)
+}
+
+fn case_insensitive() -> Arg<'static, 'static> {
+    Arg::with_name("case_insensitive")
+        .short("c")
+        .long("case-insensitive")
+        .help("Enables case INsensitive search. Be careful, this may be slower.")
         .takes_value(false)
         .required(false)
 }
