@@ -134,7 +134,7 @@ pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
     Result::Ok(())
 }
 
-fn process(term: &str, handle: &mut dyn Read, buf_size: usize, case_insensitive: bool) -> u32 {
+fn process<T: Read>(term: &str, handle: &mut T, buf_size: usize, case_insensitive: bool) -> u32 {
     let mut buf: Vec<u8> = vec![0; buf_size];
 
     let mut cursor = 0;
