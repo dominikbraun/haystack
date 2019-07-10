@@ -105,12 +105,9 @@ impl<'s> Manager<'s> {
             self.queue.push(String::new());
         }
 
-        let mut sum: u32 = 0;
-
-        for _ in 0..self.opt.pool_size {
-            sum += self.done_rx.recv().unwrap_or(0);
-        }
-        sum
+        (0..self.opt.pool_size)
+            .filter_map(|_| self.done_rx.recv().ok())
+            .sum()
     }
 }
 
@@ -189,7 +186,7 @@ mod tests {
         fake_file.write_all(data.as_bytes()).unwrap();
         fake_file.seek(SeekFrom::Start(0)).unwrap();
 
-        return fake_file
+        fake_file
     }
 
     #[test]

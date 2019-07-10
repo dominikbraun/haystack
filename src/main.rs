@@ -31,24 +31,18 @@ fn main() {
     let benchmark = m.is_present("benchmark");
     
     let max_depth = m.value_of("max_depth").map(|d| {
-        d.parse::<usize>().unwrap_or_else(|err| {
-            panic!(err);
-        })
+        d.parse::<usize>().unwrap()
     });
 
     let buf_size = m.value_of("buf_size")
         .unwrap_or("8192")
         .parse::<usize>()
-        .unwrap_or_else(|err| {
-            panic!(err);
-        });
+        .unwrap();
 
     let pool_size = m.value_of("poolsize")
         .unwrap_or("8")
         .parse::<usize>()
-        .unwrap_or_else(|err| {
-            panic!(err);
-        });
+        .unwrap();
 
     let options = Settings {
         _snippets: snippets,
