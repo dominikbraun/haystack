@@ -7,12 +7,12 @@ pub fn build() -> App<'static, 'static> {
         .version(env!("FULL_VERSION"))
         .arg(arg_dir())
         .arg(arg_needle())
-        .arg(flag_snippets())
-        .arg(case_insensitive())
-        .arg(flag_benchmark())
-        .arg(arg_max_depth())
-        .arg(arg_buf_size())
-        .arg(arg_poolsize())
+        // .arg(flag_snippets())
+        // .arg(case_insensitive())
+        // .arg(flag_benchmark())
+        // .arg(arg_max_depth())
+        // .arg(arg_buf_size())
+        // .arg(arg_poolsize())
 }
 
 fn arg_dir() -> Arg<'static, 'static> {

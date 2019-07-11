@@ -9,6 +9,7 @@ build = "build.rs"
 walkdir = "2"
 clap = "2.33.0"
 crossbeam = "0.7"
+structopt = "0.2.18"
 
 [features]
 release_max_level_info = []
