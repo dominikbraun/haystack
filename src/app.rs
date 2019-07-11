@@ -31,53 +31,53 @@ fn arg_needle() -> Arg<'static, 'static> {
         .required(true)
 }
 
-fn flag_snippets() -> Arg<'static, 'static> {
-    Arg::with_name("snippets")
-        .short("s")
-        .long("snippets")
-        .help("Prints a text snippet containing the found search term.")
-        .takes_value(false)
-        .required(false)
-}
+// fn flag_snippets() -> Arg<'static, 'static> {
+//     Arg::with_name("snippets")
+//         .short("s")
+//         .long("snippets")
+//         .help("Prints a text snippet containing the found search term.")
+//         .takes_value(false)
+//         .required(false)
+// }
 
-fn case_insensitive() -> Arg<'static, 'static> {
-    Arg::with_name("case_insensitive")
-        .short("c")
-        .long("case-insensitive")
-        .help("Enables case INsensitive search. Be careful, this may be slower.")
-        .takes_value(false)
-        .required(false)
-}
+// fn case_insensitive() -> Arg<'static, 'static> {
+//     Arg::with_name("case_insensitive")
+//         .short("c")
+//         .long("case-insensitive")
+//         .help("Enables case INsensitive search. Be careful, this may be slower.")
+//         .takes_value(false)
+//         .required(false)
+// }
 
-fn flag_benchmark() -> Arg<'static, 'static> {
-    Arg::with_name("benchmark")
-        .long("benchmark")
-        .help("Displays benchmarking data.")
-        .takes_value(false)
-        .required(false)
-}
+// fn flag_benchmark() -> Arg<'static, 'static> {
+//     Arg::with_name("benchmark")
+//         .long("benchmark")
+//         .help("Displays benchmarking data.")
+//         .takes_value(false)
+//         .required(false)
+// }
 
-fn arg_max_depth() -> Arg<'static, 'static> {
-    Arg::with_name("max_depth")
-        .short("d")
-        .long("max-depth")
-        .help("Used buffer size for reading from the buffered reader.")
-        .takes_value(true)
-        .required(false)
-}
+// fn arg_max_depth() -> Arg<'static, 'static> {
+//     Arg::with_name("max_depth")
+//         .short("d")
+//         .long("max-depth")
+//         .help("Used buffer size for reading from the buffered reader.")
+//         .takes_value(true)
+//         .required(false)
+// }
 
-fn arg_buf_size() -> Arg<'static, 'static> {
-    Arg::with_name("buf_size")
-        .long("bufsize")
-        .help("Used buffer size for reading from the buffered reader.")
-        .takes_value(true)
-        .required(false)
-}
+// fn arg_buf_size() -> Arg<'static, 'static> {
+//     Arg::with_name("buf_size")
+//         .long("bufsize")
+//         .help("Used buffer size for reading from the buffered reader.")
+//         .takes_value(true)
+//         .required(false)
+// }
 
-fn arg_poolsize() -> Arg<'static, 'static> {
-    Arg::with_name("poolsize")
-        .long("poolsize")
-        .help("The worker pool size, i. e. number of threads.")
-        .takes_value(true)
-        .required(false)
-}
+// fn arg_poolsize() -> Arg<'static, 'static> {
+//     Arg::with_name("poolsize")
+//         .long("poolsize")
+//         .help("The worker pool size, i. e. number of threads.")
+//         .takes_value(true)
+//         .required(false)
+// }
