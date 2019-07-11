@@ -1,4 +1,5 @@
 use std::io;
+use std::borrow::Cow;
 use std::time::Instant;
 
 mod app;
@@ -21,10 +22,10 @@ fn main() {
 
     let case_insensitive = m.is_present("case_insensitive");
 
-    let needle = if case_insensitive {
-        needle.to_ascii_lowercase()
+    let needle: Cow<str> = if case_insensitive {
+        needle.to_ascii_lowercase().into()
     } else {
-        needle.to_owned()
+        needle.into()
     };
 
     let snippets = m.is_present("snippets");
@@ -55,7 +56,7 @@ fn main() {
     
     let now = Instant::now();
 
-    let total = run(dir, needle.as_str(), &options);
+    let total = run(dir, &needle, &options);
 
     if options.benchmark {
         println!("\nElapsed time: {} ms", now.elapsed().as_millis());
