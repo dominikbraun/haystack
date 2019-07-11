@@ -4,7 +4,7 @@ extern crate walkdir;
 use std::fs;
 use std::io;
 use std::io::{BufWriter, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
 
@@ -12,23 +12,21 @@ use crossbeam::deque::Injector;
 use crossbeam::deque::Steal;
 use walkdir::WalkDir;
 
-use crate::Settings;
+use crate::Params;
 
-pub struct Manager<'s> {
-    term: String,
-    opt: &'s Settings,
+pub struct Manager<'p> {
+    args: &'p Params,
     queue: Arc<Injector<String>>,
     done_tx: crossbeam::Sender<u32>,
     done_rx: crossbeam::Receiver<u32>,
 }
 
-impl<'s> Manager<'s> {
-    pub fn new(term: &str, options: &'s Settings) -> Manager<'s> {
-        let (done_tx, done_rx) = crossbeam::bounded(options.pool_size);
+impl<'p> Manager<'p> {
+    pub fn new(args: &'p Params) -> Manager<'p> {
+        let (done_tx, done_rx) = crossbeam::bounded(args.pool_size);
 
         Manager {
-            term: term.to_owned(),
-            opt: options,
+            args: args,
             queue: Arc::new(Injector::<String>::new()),
             done_tx,
             done_rx,
@@ -36,12 +34,13 @@ impl<'s> Manager<'s> {
     }
 
     pub fn spawn(&self) -> bool {
-        for _ in 0..self.opt.pool_size {
-            let term = self.term.clone();
+        for _ in 0..self.args.pool_size {
+            
+            let term = self.args.needle.clone();
             let queue = Arc::clone(&self.queue);
-            let buf_size = self.opt.buf_size;
+            let buf_size = self.args.buf_size;
             let done_tx = self.done_tx.clone();
-            let case_insensitive = self.opt.case_insensitive;
+            let case_insensitive = self.args.case_insensitive;
 
             let mut stdout = BufWriter::new(io::stdout());
 
@@ -60,7 +59,7 @@ impl<'s> Manager<'s> {
                         let mut handle = match fs::File::open(path) {
                             Ok(handle) => handle,
                             Err(e) => {
-                                eprintln!("Error occurred while reading file {}: {}", &f, e);
+                                eprintln!("{}", e);
                                 continue;
                             },
                         };
@@ -101,21 +100,21 @@ impl<'s> Manager<'s> {
 
     pub fn stop(&self) -> u32 {
         // Send an empty string to each worker queue.
-        for _ in 0..self.opt.pool_size {
+        for _ in 0..self.args.pool_size {
             self.queue.push(String::new());
         }
 
-        (0..self.opt.pool_size)
+        (0..self.args.pool_size)
             .filter_map(|_| self.done_rx.recv().ok())
             .sum()
     }
 }
 
-pub fn scan(dir: &str, manager: &Manager) -> Result<(), io::Error> {
-    let mut walker = WalkDir::new(dir.to_owned());
+pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
+    let mut walker = WalkDir::new(dir);
 
-    if manager.opt.max_depth.is_some() {
-        walker = walker.max_depth(manager.opt.max_depth.unwrap());
+    if manager.args.max_depth.is_some() {
+        walker = walker.max_depth(manager.args.max_depth.unwrap());
     }
 
     let items = walker.into_iter().filter_map(|i| {
@@ -179,19 +178,19 @@ mod tests {
 
     use crate::core::process;
 
-    fn setup_fake_file(data: &str) -> Cursor<Vec<u8>> {
-        let mut fake_file = Cursor::new(Vec::new());
+    fn dummy_file(data: &str) -> Cursor<Vec<u8>> {
+        let mut file = Cursor::new(Vec::new());
 
-        // Write into the "file" and seek to the beginning
-        fake_file.write_all(data.as_bytes()).unwrap();
-        fake_file.seek(SeekFrom::Start(0)).unwrap();
+        // Write the test data into the dummy file and seek to the beginning.
+        file.write_all(data.as_bytes()).unwrap();
+        file.seek(SeekFrom::Start(0)).unwrap();
 
-        fake_file
+        return file;
     }
 
     #[test]
     fn find_at_end() {
-        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        let mut reader = BufReader::new(dummy_file("0123456789"));
         // use buf size 4 to test also, if it works if the buffer is not full at the end
         assert_eq!(1, process("789", &mut reader, 4, false), "finding the search term at the end should return true");
     }
@@ -199,43 +198,43 @@ mod tests {
     /// This test should NOT fail (e. g. index out of bounds)
     #[test]
     fn find_only_half_at_end() {
-        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        let mut reader = BufReader::new(dummy_file("0123456789"));
         assert_eq!(0, process("8910", &mut reader, 5, false), "finding the pattern only half at the end should return false");
     }
 
     #[test]
     fn find_at_beginning() {
-        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        let mut reader = BufReader::new(dummy_file("0123456789"));
         assert_eq!(1, process("012", &mut reader, 5, false), "finding the pattern at the beginning should return true");
     }
 
     #[test]
     fn find_at_center() {
-        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        let mut reader = BufReader::new(dummy_file("0123456789"));
         assert_eq!(1, process("34567", &mut reader, 5, false), "finding the pattern at the center should return true");
     }
 
     #[test]
     fn finding_nothing() {
-        let mut reader = BufReader::new(setup_fake_file("0123456789"));
+        let mut reader = BufReader::new(dummy_file("0123456789"));
         assert_eq!(0, process("asdf", &mut reader, 5, false), "finding nothing should return false");
     }
 
     #[test]
     fn find_several_times() {
-        let mut reader = BufReader::new(setup_fake_file("abc01234abc56789abcjab"));
+        let mut reader = BufReader::new(dummy_file("abc01234abc56789abcjab"));
         assert_eq!(3, process("abc", &mut reader, 10, false), "the pattern should exist 3 times in the file");
     }
 
     #[test]
     fn find_case_insensitive() {
-        let mut reader = BufReader::new(setup_fake_file("ABC01234aBc56789abcjab"));
+        let mut reader = BufReader::new(dummy_file("ABC01234aBc56789abcjab"));
         assert_eq!(3, process("abc", &mut reader, 10, true), "the pattern should exist 3 times in the file");
     }
 
     #[test]
     fn find_not_case_insensitive() {
-        let mut reader = BufReader::new(setup_fake_file("abc01234abc56789abcjab"));
+        let mut reader = BufReader::new(dummy_file("abc01234abc56789abcjab"));
         assert_eq!(0, process("ABC", &mut reader, 10, false), "the pattern should exist 3 times in the file");
     }
 }
