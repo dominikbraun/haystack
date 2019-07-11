@@ -26,7 +26,7 @@ impl<'p> Manager<'p> {
         let (done_tx, done_rx) = crossbeam::bounded(args.pool_size);
 
         Manager {
-            args: args,
+            args,
             queue: Arc::new(Injector::<String>::new()),
             done_tx,
             done_rx,
@@ -185,7 +185,7 @@ mod tests {
         file.write_all(data.as_bytes()).unwrap();
         file.seek(SeekFrom::Start(0)).unwrap();
 
-        return file;
+        file
     }
 
     #[test]
