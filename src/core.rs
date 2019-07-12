@@ -114,7 +114,8 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     let mut walker = WalkDir::new(dir);
 
     if manager.args.max_depth.is_some() {
-        walker = walker.max_depth(manager.args.max_depth.unwrap());
+        let d = manager.args.max_depth.unwrap();
+        walker = walker.max_depth(d);
     }
 
     let items = walker.into_iter().filter_map(|i| {
@@ -166,7 +167,7 @@ fn process<T: Read>(term: &str, handle: &mut T, buf_size: usize, case_insensitiv
                 }
             }
         } else {
-            return 0;
+            break;
         }
     }
     found
