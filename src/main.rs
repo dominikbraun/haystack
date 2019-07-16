@@ -20,15 +20,15 @@ pub struct Params {
     /// The text you want to search for
     needle: String,
 
-    /// Prints a text snippet containing the found search term
+    /// Prints a text snippet showing the result
     #[structopt(short, long)]
     snippets: bool,
 
-    /// Enables case insensitive search. Be careful, this may be slower
+    /// Use case-insensivie search (may be slower)
     #[structopt(name="case-insensitive", short, long)]
     case_insensitive: bool,
 
-    /// Displays benchmarking data
+    /// Measure the execution time
     #[structopt(short, long)]
     benchmark: bool,
 
@@ -36,11 +36,11 @@ pub struct Params {
     #[structopt(short="d", long="max-depth")]
     max_depth: Option<usize>,
 
-    /// Used buffer size for reading from the buffered reader
+    /// The size of the buffer used for the file
     #[structopt(long="bufsize", default_value="8192")]
     buf_size: usize,
 
-    /// The worker pool size, i. e. number of threads
+    /// The number of worker threads
     #[structopt(long="poolsize", default_value="8")]
     pool_size: usize
 }
