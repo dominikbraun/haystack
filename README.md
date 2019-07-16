@@ -3,6 +3,7 @@
 	<img src="https://sternentstehung.de/haystack-dark-readme.png" alt="haystack">
 	<br>
 	<br>
+	<br>
 </h1>
 
 > A fast & simple text search across files.
