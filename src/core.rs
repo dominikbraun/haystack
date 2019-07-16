@@ -14,6 +14,9 @@ use walkdir::WalkDir;
 
 use crate::Params;
 
+// Manager provides methods to start and manage all worker threads.
+// It also holds the CSP channels for communication with the workers
+// and provides the global injector queue for new tasks.
 pub struct Manager<'p> {
     args: &'p Params,
     queue: Arc<Injector<String>>,
@@ -22,6 +25,8 @@ pub struct Manager<'p> {
 }
 
 impl<'p> Manager<'p> {
+    // Creates a new instance of Manager with the given CLI args.
+    // At the moment, a buffered channel is being used.
     pub fn new(args: &'p Params) -> Manager<'p> {
         let (done_tx, done_rx) = crossbeam::bounded(args.pool_size);
 
@@ -33,6 +38,8 @@ impl<'p> Manager<'p> {
         }
     }
 
+    // Spawns n new worker threads (using n = pool_size). All needed
+    // values are copied/cloned and then moved into the thread.
     pub fn spawn(&self) -> bool {
         for _ in 0..self.args.pool_size {
             
@@ -42,6 +49,8 @@ impl<'p> Manager<'p> {
             let done_tx = self.done_tx.clone();
             let case_insensitive = self.args.case_insensitive;
 
+            // Wraps an instance of BufWriter around stdout so that
+            // stdout will only be flushed when the buffer is full.
             let mut stdout = BufWriter::new(io::stdout());
 
             thread::spawn(move || {
@@ -51,7 +60,7 @@ impl<'p> Manager<'p> {
                     if let Steal::Success(f) = queue.steal() {
                         if f.is_empty() {
                             // Leave the loop since an empty string is
-                            // the stop signal for worker queues.
+                            // the stop signal for worker threads.
                             break;
                         }
                         let path = Path::new(&f);
@@ -86,6 +95,8 @@ impl<'p> Manager<'p> {
                     eprintln!("{}", err);
                 });
 
+                // Confirm that the thread has finished. On that occasion
+                // the total number of matches will be used as a value.
                 done_tx.send(found).unwrap_or_else(|err| {
                     eprintln!("{}", err);
                 });
@@ -94,12 +105,15 @@ impl<'p> Manager<'p> {
         true
     }
 
+    // Pushes a new file (represented by a String) into the queue
+    // which will be popped of by a worker.
     fn take(&self, file: String) {
         self.queue.push(file);
     }
 
+    // Will be called after scan() has finished. This function sends
+    // a stop signal to all workers and waits until they've finished.
     pub fn stop(&self) -> u32 {
-        // Send an empty string to each worker queue.
         for _ in 0..self.args.pool_size {
             self.queue.push(String::new());
         }
@@ -110,6 +124,9 @@ impl<'p> Manager<'p> {
     }
 }
 
+// Scans a given directory recursively. Each file will be pushed
+// into the global injector queue provided by the Manager. Returning
+// a Result will indicate that the Manager may stop the workers.
 pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     let mut walker = WalkDir::new(dir);
 
@@ -131,6 +148,9 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     Result::Ok(())
 }
 
+// Searches a file represented by handle for a given term by performing
+// a byte-wise comparison. In order to keep the memory footprint small
+// even with many threads, the file will be merely loaded as byte chunks.
 fn process<T: Read>(term: &str, handle: &mut T, buf_size: usize, case_insensitive: bool) -> u32 {
     let mut buf: Vec<u8> = vec![0; buf_size];
 
@@ -139,6 +159,8 @@ fn process<T: Read>(term: &str, handle: &mut T, buf_size: usize, case_insensitiv
     let term = term.as_bytes();
 
     loop {
+        // Only process the byte buffer if the file bytes have been
+        // read from the handle successfully. Otherwise, end the loop.
         if let Ok(len) = handle.read(&mut buf) {
             if len == 0 {
                 break;
@@ -151,6 +173,9 @@ fn process<T: Read>(term: &str, handle: &mut T, buf_size: usize, case_insensitiv
                     *val
                 };
 
+                // The fact that a matching result may be splitted into two pieces
+                // (because the buffer is emptied and refilled chunk by chunk) doesn't
+                // matter since the cursor position remains the same.
                 if val == term[cursor] {
                     cursor += 1;
                 } else if cursor > 0 {
@@ -161,6 +186,7 @@ fn process<T: Read>(term: &str, handle: &mut T, buf_size: usize, case_insensitiv
                     }
                 }
 
+                // A matching result was found if the cursor reaches the term's end.
                 if cursor == term.len() {
                     found += 1;
                     cursor = 0;
