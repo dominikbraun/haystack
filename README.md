@@ -1,6 +1,6 @@
 <h1 align="center">
 	<br>
-	<img src="https://sternentstehung.de/haystack-readme.png" alt="haystack">
+	<img src="https://sternentstehung.de/haystack-dark-readme.png" alt="haystack">
 	<br>
 	<br>
 </h1>
