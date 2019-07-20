@@ -174,44 +174,40 @@ fn process<T: Read>(term: &str, handle: &mut T, buf_size: usize, case_insensitiv
     let mut found: u32 = 0;
     let term = term.as_bytes();
 
-    loop {
-        // Only process the byte buffer if the file bytes have been
-        // read from the handle successfully. Otherwise, end the loop.
-        if let Ok(len) = handle.read(&mut buf) {
-            if len == 0 {
-                break;
-            }
+    // Only process the byte buffer if the file bytes have been
+    // read from the handle successfully. Otherwise, end the loop.
+    while let Ok(len) = handle.read(&mut buf) {
+        if len == 0 {
+            break;
+        }
 
-            for val in buf.iter().take(len) {
-                let val = if case_insensitive {
-                    (*val).to_ascii_lowercase()
+        for val in buf.iter().take(len) {
+            let val = if case_insensitive {
+                (*val).to_ascii_lowercase()
+            } else {
+                *val
+            };
+
+            // The fact that a matching result may be splitted into two pieces
+            // (because the buffer is emptied and refilled chunk by chunk) doesn't
+            // matter since the cursor position remains the same.
+            if val == term[cursor] {
+                cursor += 1;
+            } else if cursor > 0 {
+                if val == term[0] {
+                    cursor = 1;
                 } else {
-                    *val
-                };
-
-                // The fact that a matching result may be splitted into two pieces
-                // (because the buffer is emptied and refilled chunk by chunk) doesn't
-                // matter since the cursor position remains the same.
-                if val == term[cursor] {
-                    cursor += 1;
-                } else if cursor > 0 {
-                    if val == term[0] {
-                        cursor = 1;
-                    } else {
-                        cursor = 0;
-                    }
-                }
-
-                // A matching result was found if the cursor reaches the term's end.
-                if cursor == term.len() {
-                    found += 1;
                     cursor = 0;
                 }
             }
-        } else {
-            break;
+
+            // A matching result was found if the cursor reaches the term's end.
+            if cursor == term.len() {
+                found += 1;
+                cursor = 0;
+            }
         }
-    }
+    };
     found
 }
 
