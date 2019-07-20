@@ -24,6 +24,10 @@ pub struct Params {
     #[structopt(short, long)]
     snippets: bool,
 
+    /// extension whitelist as comma separated list
+    #[structopt(short, long)]
+    whitelist: Vec<String>,
+
     /// Use case-insensivie search (may be slower)
     #[structopt(name="case-insensitive", short, long)]
     case_insensitive: bool,

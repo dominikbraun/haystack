@@ -129,6 +129,8 @@ impl<'p> Manager<'p> {
 // a Result will indicate that the Manager may stop the workers.
 pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     let mut walker = WalkDir::new(dir);
+    // get whitelist and convert it to lower case
+    let whitelist: Vec<String> = manager.args.whitelist.iter().map(|file_ending| file_ending.to_lowercase()).collect();
 
     if manager.args.max_depth.is_some() {
         let d = manager.args.max_depth.unwrap();
@@ -137,6 +139,20 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
 
     let items = walker.into_iter().filter_map(|i| {
         i.ok()
+    }).filter(|dir_entry| {
+        if !whitelist.is_empty() {
+            // filter for whitelist
+            let file_ending: Option<Option<&str>> = dir_entry.file_name().to_str().map(|ending| ending.split('.').last());
+            // todo: better unwrap code...
+            return if file_ending.is_some() && file_ending.unwrap().is_some() {
+                let name = file_ending.unwrap().unwrap().to_lowercase();
+                whitelist.iter().any(|whitelisted_ending| whitelisted_ending == &name)
+            } else {
+                false
+            }
+        }
+
+        true
     });
 
     for i in items {
