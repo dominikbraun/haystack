@@ -142,10 +142,15 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     }).filter(|dir_entry| {
         if !whitelist.is_empty() {
             // filter for whitelist
-            let file_ending: Option<Option<&str>> = dir_entry.file_name().to_str().map(|ending| ending.split('.').last());
-            // todo: better unwrap code...
-            return if file_ending.is_some() && file_ending.unwrap().is_some() {
-                let name = file_ending.unwrap().unwrap().to_lowercase();
+            let file_name = dir_entry.file_name().to_str();
+            if file_name.is_none() {
+                return false
+            }
+
+            let file_ending = file_name.unwrap().split('.').last();
+
+            return if file_ending.is_some() {
+                let name = file_ending.unwrap().to_lowercase();
                 whitelist.iter().any(|whitelisted_ending| whitelisted_ending == &name)
             } else {
                 false
