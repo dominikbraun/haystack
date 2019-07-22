@@ -21,6 +21,12 @@ _haystack_ searches case-sensitive by default. However, you can opt-in to case-i
 ```sh
 $ haystack <path> <term> --case-insensitive
 ```
+_haystack_ searches for all files it can get. You can provide a whitelist of file extensions to filter only for specific ones.
+This is NOT case sensitive
+
+```sh
+$ haystack <path> <term> --whitelist rs go
+```
 To get a list of all available options, use `--help`.
 
 ```sh
