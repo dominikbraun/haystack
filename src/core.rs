@@ -130,7 +130,10 @@ impl<'p> Manager<'p> {
 pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     let mut walker = WalkDir::new(dir);
     // get whitelist and convert it to lower case
-    let whitelist: Vec<String> = manager.args.whitelist.iter().map(|file_ending| file_ending.to_lowercase()).collect();
+    let whitelist: Vec<String> = manager.args.whitelist
+        .iter()
+        .map(|extension| extension.to_lowercase())
+        .collect();
 
     if manager.args.max_depth.is_some() {
         let d = manager.args.max_depth.unwrap();
@@ -139,19 +142,21 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
 
     let items = walker.into_iter().filter_map(|i| {
         i.ok()
-    }).filter(|dir_entry| {
+    }).filter(|item| {
+        // In case a whitelist with allowed file extensions is given,
+        // each item's file extension will be checked and compared
+        // to each extension in the whitelist.
         if !whitelist.is_empty() {
-            // filter for whitelist
-            let file_name = dir_entry.file_name().to_str();
+            let file_name = item.file_name().to_str();
             if file_name.is_none() {
                 return false
             }
 
-            let file_ending = file_name.unwrap().split('.').last();
+            let extension = file_name.unwrap().split('.').last();
 
-            return if file_ending.is_some() {
-                let name = file_ending.unwrap().to_lowercase();
-                whitelist.iter().any(|whitelisted_ending| whitelisted_ending == &name)
+            return if extension.is_some() {
+                let ext = extension.unwrap().to_lowercase();
+                whitelist.iter().any(|whitelisted| whitelisted == &ext)
             } else {
                 false
             }
@@ -236,49 +241,73 @@ mod tests {
     fn find_at_end() {
         let mut reader = BufReader::new(dummy_file("0123456789"));
         // use buf size 4 to test also, if it works if the buffer is not full at the end
-        assert_eq!(1, process("789", &mut reader, 4, false), "finding the search term at the end should return true");
+        assert_eq!(
+            1, process("789", &mut reader, 4, false),
+            "finding the search term at the end should return true"
+        );
     }
 
     /// This test should NOT fail (e. g. index out of bounds)
     #[test]
     fn find_only_half_at_end() {
         let mut reader = BufReader::new(dummy_file("0123456789"));
-        assert_eq!(0, process("8910", &mut reader, 5, false), "finding the pattern only half at the end should return false");
+        assert_eq!(
+            0, process("8910", &mut reader, 5, false),
+            "finding the pattern only half at the end should return false"
+        );
     }
 
     #[test]
     fn find_at_beginning() {
         let mut reader = BufReader::new(dummy_file("0123456789"));
-        assert_eq!(1, process("012", &mut reader, 5, false), "finding the pattern at the beginning should return true");
+        assert_eq!(
+            1, process("012", &mut reader, 5, false),
+            "finding the pattern at the beginning should return true"
+        );
     }
 
     #[test]
     fn find_at_center() {
         let mut reader = BufReader::new(dummy_file("0123456789"));
-        assert_eq!(1, process("34567", &mut reader, 5, false), "finding the pattern at the center should return true");
+        assert_eq!(
+            1, process("34567", &mut reader, 5, false),
+            "finding the pattern at the center should return true"
+        );
     }
 
     #[test]
     fn finding_nothing() {
         let mut reader = BufReader::new(dummy_file("0123456789"));
-        assert_eq!(0, process("asdf", &mut reader, 5, false), "finding nothing should return false");
+        assert_eq!(
+            0, process("asdf", &mut reader, 5, false),
+            "finding nothing should return false"
+        );
     }
 
     #[test]
     fn find_several_times() {
         let mut reader = BufReader::new(dummy_file("abc01234abc56789abcjab"));
-        assert_eq!(3, process("abc", &mut reader, 10, false), "the pattern should exist 3 times in the file");
+        assert_eq!(
+            3, process("abc", &mut reader, 10, false),
+            "the pattern should exist 3 times in the file"
+        );
     }
 
     #[test]
     fn find_case_insensitive() {
         let mut reader = BufReader::new(dummy_file("ABC01234aBc56789abcjab"));
-        assert_eq!(3, process("abc", &mut reader, 10, true), "the pattern should exist 3 times in the file");
+        assert_eq!(
+            3, process("abc", &mut reader, 10, true),
+            "the pattern should exist 3 times in the file"
+        );
     }
 
     #[test]
     fn find_not_case_insensitive() {
         let mut reader = BufReader::new(dummy_file("abc01234abc56789abcjab"));
-        assert_eq!(0, process("ABC", &mut reader, 10, false), "the pattern should exist 3 times in the file");
+        assert_eq!(
+            0, process("ABC", &mut reader, 10, false),
+            "the pattern should exist 3 times in the file"
+        );
     }
 }
