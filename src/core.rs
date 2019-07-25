@@ -130,7 +130,7 @@ impl<'p> Manager<'p> {
 pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     let mut walker = WalkDir::new(dir);
     // get whitelist and convert it to lower case
-    let whitelist: Vec<String> = manager.args.whitelist
+    let valid_exts: Vec<String> = manager.args.valid_exts
         .iter()
         .map(|extension| extension.to_lowercase())
         .collect();
@@ -146,7 +146,7 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
         // In case a whitelist with allowed file extensions is given,
         // each item's file extension will be checked and compared
         // to each extension in the whitelist.
-        if !whitelist.is_empty() {
+        if !valid_exts.is_empty() {
             let file_name = item.file_name().to_str();
             if file_name.is_none() {
                 return false
@@ -156,7 +156,7 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
 
             return if extension.is_some() {
                 let ext = extension.unwrap().to_lowercase();
-                whitelist.iter().any(|whitelisted| whitelisted == &ext)
+                valid_exts.iter().any(|whitelisted| whitelisted == &ext)
             } else {
                 false
             }
