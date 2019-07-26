@@ -132,7 +132,7 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     // get whitelist and convert it to lower case
     let valid_exts: Vec<String> = manager.args.valid_exts
         .iter()
-        .map(|extension| extension.to_lowercase())
+        .map(|ext| ext.to_lowercase())
         .collect();
 
     if manager.args.max_depth.is_some() {
@@ -143,25 +143,21 @@ pub fn scan(dir: &PathBuf, manager: &Manager) -> Result<(), io::Error> {
     let items = walker.into_iter().filter_map(|i| {
         i.ok()
     }).filter(|item| {
-        // In case a whitelist with allowed file extensions is given,
-        // each item's file extension will be checked and compared
-        // to each extension in the whitelist.
+        // In case a list of valid file extensions has been provided,
+        // each item's extension will be compared against the list.
         if !valid_exts.is_empty() {
-            let file_name = item.file_name().to_str();
-            if file_name.is_none() {
-                return false
-            }
 
-            let extension = file_name.unwrap().split('.').last();
+            if let Some(name) = item.file_name().to_str() {
+                let ext = name.split('.').last();
 
-            return if extension.is_some() {
-                let ext = extension.unwrap().to_lowercase();
-                valid_exts.iter().any(|whitelisted| whitelisted == &ext)
-            } else {
-                false
+                if ext.is_none() {
+                    return false;
+                }
+                let ext = ext.unwrap().to_lowercase();
+                return valid_exts.iter().any(|valid| &ext == valid);
             }
+            return false
         }
-
         true
     });
 
