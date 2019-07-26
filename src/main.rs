@@ -25,7 +25,7 @@ pub struct Params {
     snippets: bool,
 
     /// List of allowed extensions as CSV
-    #[structopt(short, long)]
+    #[structopt(short="e", long="ext")]
     valid_exts: Vec<String>,
 
     /// Use case-insensivie search (may be slower)
