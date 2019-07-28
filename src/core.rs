@@ -272,7 +272,7 @@ mod tests {
     }
 
     #[test]
-    fn finding_nothing() {
+    fn find_nothing() {
         let mut reader = BufReader::new(dummy_file("0123456789"));
         assert_eq!(
             0, process("asdf", &mut reader, 5, false),
