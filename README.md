@@ -24,7 +24,7 @@ $ haystack <path> <term> --case-insensitive
 You can provide a whitelist of file extensions if you don't want all files to be searched.
 
 ```sh
-$ haystack <path> <term> --whitelist rs go
+$ haystack <path> <term> --ext rs go
 ```
 To get a list of all available options, use `--help`.
 
